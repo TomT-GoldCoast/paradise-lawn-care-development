@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paradise Lawn Care Operations Suite v3.9</title>
-  <link rel="stylesheet" href="style.css?v=3.9.0">
+  <title>Paradise Lawn Care Operations Suite v3.12</title>
+  <link rel="stylesheet" href="style.css?v=3.12.0">
 </head>
 <body>
   <div class="app">
@@ -23,7 +23,7 @@
       <div class="brand-logo-wrap"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/logo.png" alt="Paradise Lawn Care Logo" class="logo"></div>
       <div class="company-info">
         <h1>Paradise Lawn Care, LLC</h1>
-        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.9 — Actionable Dashboard</p>
+        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.12 — Stability Repairs</p>
         <p>📞 772-323-9401</p>
         <p>✉ ParadiseLawncare772@gmail.com</p>
         <p>📍 5685 SE Ault Ave., Suite 1<br>Stuart, FL 34997</p>
@@ -292,12 +292,12 @@
     </div>
   </div>
 
-  <script src="script.js?v=3.9.0"></script>
+  <script src="script.js?v=3.12.0"></script>
   <div class="yard-animation"><div class="grass-line"></div><div class="yard-worker mower">🚜</div><div class="yard-worker trimmer">🧍‍♂️🌿</div><div class="yard-worker blower">🧍‍♂️💨🍂</div></div>
 
   <div id="billingCenterModal" class="modal" hidden>
-    <div class="modal-content billing-center-modal">
-      <div class="modal-header"><div><h2>Billing & Communication Center</h2><p>Completed services ready for invoice generation, review, and email.</p></div><button type="button" class="modal-close" onclick="closeBillingCenter()">×</button></div>
+    <div class="modal-card billing-center-modal" role="dialog" aria-modal="true" aria-labelledby="billingCenterTitle">
+      <div class="modal-header"><div><h2 id="billingCenterTitle">Billing & Communication Center</h2><p>Completed services ready for invoice generation, review, and email.</p></div><button type="button" class="modal-close close-button" aria-label="Close Billing Center" onclick="closeBillingCenter()">×</button></div>
       <div id="billingCenterSummary" class="intelligence-cards"></div>
       <div id="billingCenterList" class="billing-center-list"></div>
     </div>
