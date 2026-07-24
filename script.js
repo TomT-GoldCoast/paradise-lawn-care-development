@@ -1,4 +1,4 @@
-/* Paradise Lawn Care Invoice App - Version 1.2 Development */
+/* Paradise Lawn Care Operations Suite - Version 3.12 */
 
 const STORAGE_KEY = "paradise_invoices_v1_2";
 const LAST_MONTH_KEY = "pl_last_month";
@@ -697,9 +697,10 @@ function buildCurrentAlerts() {
   const alerts = [];
   const today = normalizeDate(new Date());
   getSavedInvoices().forEach(invoice => {
-    if ((invoice.status || "Unpaid") !== "Paid" && invoice.dueDate) {
-      const due = new Date(`${invoice.dueDate}T00:00:00`);
-      if (due <= today) alerts.push({ id: alertId("invoice", invoice.id, "payment"), type: "Invoice", title: `Invoice ${invoice.jobNumber} is due`, detail: `${invoice.clientName || invoice.businessName || "Customer"} · ${formatMoney(invoice.total)} · Due ${formatDisplayDate(invoice.dueDate)}`, sourceId: invoice.id, actionLabel: "Mark Paid" });
+    const dueState = invoiceDueState(invoice, today);
+    if (dueState === "overdue" || dueState === "due-today") {
+      const title = dueState === "due-today" ? `Invoice ${invoice.jobNumber} is Due Today` : `Invoice ${invoice.jobNumber} is overdue`;
+      alerts.push({ id: alertId("invoice", invoice.id, "payment"), type: "Invoice", title, detail: `${invoice.clientName || invoice.businessName || "Customer"} · ${formatMoney(invoice.total)} · Due ${formatDisplayDate(invoice.dueDate)}`, sourceId: invoice.id, actionLabel: "Mark Paid", dueState });
     }
   });
   const maintenance = getMaintenanceData();
@@ -938,10 +939,18 @@ function renderIntelligence(){
   if(byId("homeMetricCards")) refreshHomeDashboard();
   if(byId("maintenanceCalendar")) renderMaintenanceCalendar();
 }
+function invoicePaidRevenueDate(invoice){return typeof invoice?.paidAt==="string"&&invoice.paidAt?invoice.paidAt.slice(0,10):invoice?.invoiceDate||"";}
+function invoiceDueState(invoice,today=new Date()){
+  if((invoice?.status||"Unpaid")==="Paid"||!invoice?.dueDate)return "none";
+  const due=normalizeDate(new Date(`${invoice.dueDate}T00:00:00`)),current=normalizeDate(today);
+  if(due<current)return "overdue";
+  if(due.getTime()===current.getTime())return "due-today";
+  return "upcoming";
+}
 function refreshHomeDashboard(){
   const hour=new Date().getHours();byId("dailyGreeting").textContent=`Good ${hour<12?"morning":hour<18?"afternoon":"evening"}.`;
-  const invoices=getSavedInvoices(),alerts=buildCurrentAlerts(),todayJobs=getTodayScheduleItems(),low=lowInventoryItems(),monthExp=expenseTotalsFor("month"),monthMaint=maintenanceFinancials("month"),monthPaid=invoices.filter(i=>(i.status||"Unpaid")==="Paid"&&intelligenceDateInPeriod(i.invoiceDate,"month")).reduce((s,i)=>s+Number(i.total||0),0),profit=monthPaid-monthExp.operating-monthExp.payroll-monthMaint.total;
-  const overdue=invoices.filter(i=>(i.status||"Unpaid")!=="Paid"&&i.dueDate&&new Date(`${i.dueDate}T00:00:00`)<=normalizeDate(new Date()));
+  const invoices=getSavedInvoices(),alerts=buildCurrentAlerts(),todayJobs=getTodayScheduleItems(),low=lowInventoryItems(),monthExp=expenseTotalsFor("month"),monthMaint=maintenanceFinancials("month"),monthPaid=invoices.filter(i=>(i.status||"Unpaid")==="Paid"&&intelligenceDateInPeriod(invoicePaidRevenueDate(i),"month")).reduce((s,i)=>s+Number(i.total||0),0),profit=monthPaid-monthExp.operating-monthExp.payroll-monthMaint.total;
+  const overdue=invoices.filter(i=>invoiceDueState(i)==="overdue");
   byId("homeMetricCards").innerHTML=[["Jobs Today",todayJobs.length,""],["Active Alerts",alerts.length,"money-warning"],["Overdue Invoices",overdue.length,"money-negative"],["Month Revenue",monthPaid,"money-positive",true],["Month Expenses",monthExp.operating+monthExp.payroll+monthMaint.total,"money-negative",true],["Est. Month Profit",profit,profit>=0?"money-positive":"money-negative",true]].map(([l,v,c,m])=>`<article class="intelligence-card ${c}"><span>${l}</span><strong>${m?formatMoney(v):v}</strong></article>`).join("");
   byId("homeTodaySchedule").innerHTML=todayJobs.length?`<div class="insight-list">${todayJobs.map(j=>`<article><strong>${escapeHtml(j.time)} · ${escapeHtml(j.customer||"Customer")}</strong><span>${escapeHtml(j.jobNumber||"")} ${escapeHtml(j.service||"")} ${escapeHtml(j.status||"")}</span></article>`).join("")}</div>`:'<p class="empty-message">No jobs entered for today.</p>';
   byId("homeAttention").innerHTML=alerts.length?`<div class="insight-list issue-list">${alerts.slice(0,6).map(a=>`<article><strong>${escapeHtml(a.title)}</strong><span>${escapeHtml(a.detail)}</span></article>`).join("")}</div>`:'<p class="empty-message">No immediate alerts.</p>';
@@ -1291,7 +1300,7 @@ const populateInvoiceLinkSelectorsV36Base=populateInvoiceLinkSelectors;
 populateInvoiceLinkSelectors=function(invoice=null){populateInvoiceLinkSelectorsV36Base(invoice);const c=customerByIdV36(invoice?.customerId||byId("invoiceCustomerLink")?.value);if(byId("invoiceCustomerNumber"))byId("invoiceCustomerNumber").value=invoice?.customerNumber||c?.customerNumber||"";if(byId("invoiceJobId")&&invoice?.jobId)byId("invoiceJobId").value=invoice.jobId;};
 const convertQuoteToInvoiceV36Base=convertQuoteToInvoice;
 convertQuoteToInvoice=function(){
-  const q=readArray(QUOTE_STORAGE_KEY).find(x=>x.id===activeQuoteId);convertQuoteToInvoiceV36Base();if(q){byId("jobNumber").value=generateInvoiceNumberV36();byId("invoiceJobId").value=q.jobId||generateJobIdV36();byId("invoiceCustomerNumber").value=q.customerNumber||customerByIdV36(q.customerId)?.customerNumber||"";}
+  const q=readArray(QUOTE_STORAGE_KEY).find(x=>x.id===activeQuoteId);convertQuoteToInvoiceV36Base();if(q){byId("jobNumber").value=generateInvoiceNumberV36();byId("invoiceJobId").value=q.jobId||generateJobIdV36();byId("invoiceCustomerNumber").value=q.customerNumber||customerByIdV36(q.customerId)?.customerNumber||"";const invoiceDate=byId("todayDate").value||getLocalDateString();byId("dueDate").value=addDaysStringV38(invoiceDate,14);}
 };
 
 function allScheduleRecordsV36(){
@@ -1396,7 +1405,7 @@ function selectScheduleRecordV37(type,id){
   const r=allScheduleJobsV37().find((x)=>x.recordType===type&&x.recordId===id);
   const slot=document.querySelector(`.schedule-slot[data-schedule-key="${activeScheduleSlotKeyV36}"]`);
   if(!r||!slot)return;
-  slot.querySelector(".sched-job").value=r.jobId||r.recordNumber||"";
+  slot.querySelector(".sched-job").textContent=r.jobId||r.recordNumber||"";
   slot.querySelector(".sched-status-toggle").dataset.status="Upcoming";
   slot.querySelector(".sched-status-toggle").textContent=scheduleIsPastV37(activeScheduleSlotKeyV36)?"Past Due":"Upcoming";
   slot.dataset.recordId=r.recordId||"";
@@ -1406,6 +1415,9 @@ function selectScheduleRecordV37(type,id){
   slot.dataset.customerNumber=r.customerNumber||"";
   closeScheduleRecordFinder();
   saveSchedule();
+  renderSchedule();
+  showScheduleCustomerCardV36(r);
+  byId("scheduleSelectedRecord").textContent=r.jobId||r.recordNumber||"Job";
 }
 function findScheduleRecordForSlotV37(slot){
   const jobId=slot?.dataset.jobId||slot?.querySelector(".sched-job")?.value||"";
@@ -1495,7 +1507,16 @@ function updateBillingHelpV38(){
 }
 
 const blankCustomerFormV38Base=blankCustomerForm;
-blankCustomerForm=function(){blankCustomerFormV38Base();if(byId("customerBillingMethod"))byId("customerBillingMethod").value="Per Service";if(byId("customerBillingAnchor"))byId("customerBillingAnchor").value=getLocalDateString();updateBillingHelpV38();};
+blankCustomerForm=function(){
+  blankCustomerFormV38Base();
+  if(byId("customerNumberDisplay"))byId("customerNumberDisplay").textContent="Not assigned";
+  if(byId("customerBillingMethod"))byId("customerBillingMethod").value="Per Service";
+  if(byId("customerBillingAnchor"))byId("customerBillingAnchor").value=getLocalDateString();
+  if(byId("customerInvoiceSearch"))byId("customerInvoiceSearch").value="";
+  if(byId("customerInvoiceCount"))byId("customerInvoiceCount").textContent="0 invoices";
+  if(byId("customerInvoiceHistory"))byId("customerInvoiceHistory").innerHTML='<p class="empty-message">Select a customer to view invoice history.</p>';
+  updateBillingHelpV38();
+};
 const loadCustomerV38Base=loadCustomer;
 loadCustomer=function(id){loadCustomerV38Base(id);const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===id);if(byId("customerBillingMethod"))byId("customerBillingMethod").value=billingMethodForCustomerV38(c);if(byId("customerBillingAnchor"))byId("customerBillingAnchor").value=billingAnchorForCustomerV38(c);updateBillingHelpV38();};
 const saveCustomerV38Base=saveCustomer;
@@ -1513,12 +1534,14 @@ renderCustomerList=function(){renderCustomerListV38Base();const host=byId("custo
 function dateDiffDaysV38(a,b){return Math.floor((new Date(`${b}T00:00:00`)-new Date(`${a}T00:00:00`))/86400000);}
 function addDaysStringV38(value,days){return getLocalDateString(addDays(new Date(`${value}T00:00:00`),days));}
 function completedScheduleServicesV38(){
-  const data=getScheduleData(),records=allScheduleJobsV37();
+  const data=getScheduleData(),records=allScheduleJobsV37(),invoices=getSavedInvoices();
   return Object.entries(data).map(([key,item])=>{
     const normalized=normalizeScheduleItemV37(item);if(normalized.workStatus!=="Completed"||normalized.billingInvoiceId)return null;
     const record=records.find(r=>(normalized.recordId&&r.recordId===normalized.recordId)||(normalized.jobId&&r.jobId===normalized.jobId));
+    const representedByInvoice=invoices.some(i=>(normalized.recordId&&i.id===normalized.recordId)||(normalized.jobId&&i.jobId===normalized.jobId)||(record?.recordType==="Invoice"&&record.recordId&&i.id===record.recordId)||(record?.recordType==="Quote"&&record.recordId&&i.quoteId===record.recordId));
+    if(representedByInvoice)return null;
     const customer=customerByIdV36(normalized.customerId||record?.customerId);if(!customer)return null;
-    const date=scheduleDateFromKeyV37(key),invoice=record?.recordType==="Invoice"?getSavedInvoices().find(i=>i.id===record.recordId):null,quote=record?.recordType==="Quote"?readArray(QUOTE_STORAGE_KEY).find(q=>q.id===record.recordId):null;
+    const date=scheduleDateFromKeyV37(key),invoice=null,quote=record?.recordType==="Quote"?readArray(QUOTE_STORAGE_KEY).find(q=>q.id===record.recordId):null;
     const amount=Number(invoice?.total||quote?.amount||0),service=invoice?.services?.[0]?.service||quote?.scope||record?.service||"Lawn service",address=addressForRecordV36(invoice||quote||record);
     return {key,item:normalized,record,customer,date,amount,service,address,jobId:normalized.jobId||record?.jobId||""};
   }).filter(Boolean);
@@ -1589,8 +1612,8 @@ function initializeV38(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(initializeV38,20),{once:true});else setTimeout(initializeV38,20);
 
-/* v3.9 actionable home dashboard */
-const DASHBOARD_VERSION_V39="3.11";
+/* v3.12 actionable home dashboard */
+const DASHBOARD_VERSION_V39="3.12";
 let activeHomeJobV39=null;
 function scheduleRecordFromDashboardV39(job){
   const jobId=job?.jobId||job?.jobNumber||"",recordId=job?.recordId||"";
@@ -1642,6 +1665,7 @@ refreshHomeDashboard=function(){
   if(byId("homeTodaySchedule"))byId("homeTodaySchedule").innerHTML=todayEntries.length?`<div class="insight-list">${todayEntries.map(([key,j])=>`<button type="button" class="dashboard-action-item is-schedule" onclick="openHomeJobQuickViewV39('${key}')"><strong>${escapeHtml(key.slice(-4,-2)+":"+key.slice(-2))} · ${escapeHtml(j.jobId||j.jobNumber||"Scheduled Job")}</strong><span>${escapeHtml(j.workStatus||"Upcoming")} · Click for address, customer, or invoice</span></button>`).join("")}</div>`:'<p class="empty-message">No jobs entered for today.</p>';
   const attention=dashboardAttentionItemsV39();
   if(byId("homeAttention"))byId("homeAttention").innerHTML=attention.length?`<div class="insight-list issue-list">${attention.slice(0,10).map(a=>`<button type="button" class="dashboard-action-item ${a.urgent?"is-urgent":a.kind==="billing"?"is-billing":a.kind==="email"?"is-communication":""}" onclick="openDashboardAttentionV39('${a.kind}','${a.id||a.key||""}')"><strong>${escapeHtml(a.title)}</strong><span>${escapeHtml(a.detail)}</span><small>Open the screen that needs attention</small></button>`).join("")}</div>`:'<p class="empty-message">No immediate alerts.</p>';
+  refreshAlerts();
 };
 function initializeV39(){byId("homeJobQuickViewModal")?.addEventListener("click",e=>{if(e.target===e.currentTarget)closeHomeJobQuickViewV39();});refreshHomeDashboard();}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(initializeV39,40),{once:true});else setTimeout(initializeV39,40);

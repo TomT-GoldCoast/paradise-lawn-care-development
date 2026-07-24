@@ -1,11 +1,14 @@
-# Paradise Lawn Care Operations Suite v3.9
+# Paradise Lawn Care Operations Suite v3.12
 
-Review build adding an actionable Home dashboard.
+Stability repair build for billing, dates, synchronized views, scheduling, customer deletion, and Billing Center presentation.
 
-## New in v3.9
-- Each job listed under Today's Schedule is clickable.
-- Clicking a scheduled job opens a compact job view with the service address and buttons for Customer, Invoice, or Schedule.
-- Each Immediate Attention item is clickable and routes to the appropriate Invoice, Billing Center, Schedule, or Maintenance screen.
-- Billing batches, invoices ready to email, overdue invoices, maintenance alerts, and past-due scheduled work can appear as individual action items.
+## New in v3.12
+- Prevents billing generation for services already represented by an invoice.
+- Uses payment date for paid monthly revenue, with legacy invoice-date fallback.
+- Separates Due Today from overdue invoices.
+- Assigns Net 14 due dates when converting quotes.
+- Keeps Dashboard, Alerts, and schedule assignment views synchronized.
+- Clears deleted customer records completely.
+- Repairs Billing Center dialog styling on desktop and mobile.
 
-This is a separate review package and does not change the current GitHub branch.
+Existing browser-storage keys and saved business data remain compatible.
