@@ -1,0 +1,23 @@
+Paradise Lawn Care Operations Suite v3.7
+Simplified Scheduling Validation
+
+PASS - JavaScript syntax validation.
+PASS - Schedule now uses only BP/RS, Search, one large Job Number control, and one status button.
+PASS - Search results are deduplicated by Job ID and may still be found by invoice, quote, customer, phone, or address.
+PASS - Selecting a search result places only the Job Number on the calendar.
+PASS - Clicking the selected Job Number opens the compact customer/address card.
+PASS - Schedule status defaults to Upcoming.
+PASS - Clicking status changes Upcoming to Completed and back.
+PASS - An uncompleted entry dated before today displays a Past Due warning automatically.
+PASS - Existing v3.6 schedule data is normalized without changing invoice numbers.
+PASS - Demo records are converted to BP/RS and Upcoming/Completed behavior.
+PASS - Current v3.6 ZIP remains unchanged as rollback package.
+
+Recommended hands-on checks:
+1. Install the five demo records.
+2. Open Scheduling and use Search in an empty time slot.
+3. Search by customer, invoice, quote, address, or Job Number.
+4. Select a result and confirm only the Job Number appears.
+5. Click the Job Number and confirm the address card opens.
+6. Click Upcoming and confirm it changes to Completed.
+7. Move to a past calendar date and confirm an unfinished job displays Past Due.

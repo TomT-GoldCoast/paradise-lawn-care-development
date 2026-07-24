@@ -1,0 +1,49 @@
+PARADISE LAWN CARE OPERATIONS SUITE v3.6
+CUSTOMER, JOB, SCHEDULING, AND COMPLETE DEMO RECORD UPDATE
+
+BUILD APPROACH
+- Built from the separate v3.5 invoice-master-record package.
+- Existing v3.5 files were not overwritten.
+- Existing invoice storage key and attachment database were preserved.
+- Existing invoice numbers are retained during migration.
+
+FEATURES VERIFIED BY STATIC TESTING
+1. Permanent Customer ID is generated when a customer is saved.
+2. Separate Job ID is generated for each quote/job record.
+3. Invoice Number remains independent from Customer ID and Job ID.
+4. Existing invoices retain their previous number during migration.
+5. Quote-to-invoice conversion carries the same Job ID and creates a separate invoice number.
+6. Scheduling Job/Record search includes quotes and invoices.
+7. Scheduling search matches invoice number, quote number, Job ID, Customer ID, name, phone, address, service, and status.
+8. Selecting a scheduling record populates Record Type, Work Status, customer, and service.
+9. Selecting a scheduling record displays the customer card with customer ID, address, and phone.
+10. Five demo records now include linked customer, property, quote, schedule, invoice, Customer ID, and Job ID data.
+11. Deleting demos removes only demo customers, quotes, schedules, and invoices.
+
+REDUNDANT TEST PASSES
+PASS 1 - JavaScript syntax
+- Node syntax validation completed without errors.
+
+PASS 2 - HTML and event wiring
+- Duplicate HTML ID scan completed.
+- Required v3.6 controls were located.
+- Inline event-handler names were compared with JavaScript function declarations.
+
+PASS 3 - Data-link review
+- Customer ID, Job ID, quote, invoice, and schedule link fields were verified in both save and load paths.
+- Existing storage keys were preserved.
+- Migration logic was verified to add missing identifiers without deleting records.
+
+PASS 4 - Package integrity
+- Final ZIP was extracted to a clean validation folder.
+- JavaScript syntax was checked again from the extracted archive.
+- Core files and v3.6 testing report were confirmed present.
+
+RECOMMENDED USER TEST
+Install the five demo records, then:
+1. Open Customers and verify Customer ID and searchable invoice history.
+2. Open Quotes and verify Job ID appears in the saved quote card.
+3. Open Scheduling, click the search button beside an empty Invoice/Quote field, and select a demo record.
+4. Verify Record Type and Status populate and the customer card displays the full address.
+5. Open the matching invoice and confirm Invoice Number, Job ID, and Customer ID are separate.
+6. Delete demo records and confirm any real records remain.

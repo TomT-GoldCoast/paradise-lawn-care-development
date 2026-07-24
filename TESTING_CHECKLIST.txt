@@ -1,0 +1,71 @@
+PARADISE LAWN CARE OPERATIONS SUITE v2.0 - TESTING CHECKLIST
+
+SETUP
+[ ] Copy images/logo.png and images/grass.png into the project.
+[ ] Open index.html using Visual Studio Code Live Server.
+[ ] Confirm Home opens first and all top tabs switch correctly.
+
+CUSTOMERS / PROPERTIES
+[ ] Create a customer with one property and save it.
+[ ] Reopen the customer from Customer Finder.
+[ ] Add a second property and confirm both remain saved.
+[ ] Test Open Map with a real property address.
+
+QUOTES / INVOICES
+[ ] Create and save a quote for the customer.
+[ ] Convert the saved quote into an invoice.
+[ ] Save the invoice and reopen it using Invoice Finder.
+[ ] Mark one invoice Paid and leave another Unpaid with a due date.
+[ ] Open View PDF and test Print / Save as PDF.
+
+SCHEDULING
+[ ] Enter a BP or RS schedule item for today.
+[ ] Save, change to another seven-day period, then return.
+[ ] Confirm the previous 30-day history limit works.
+
+EMPLOYEES / PAYROLL
+[ ] Save an employee with a pay rate.
+[ ] Record payroll using hours only and verify the total calculates from the pay rate.
+[ ] Confirm payroll appears in Intelligence expenses.
+
+MAINTENANCE / ALERTS
+[ ] Add a mower name, current hours, oil interval, and blade interval.
+[ ] Add completed oil and blade records with readings.
+[ ] Raise current hours above an interval and confirm an Alert appears.
+[ ] Choose Remind Me Later twice and verify bypass count increases.
+[ ] Complete the alert and verify completed history records both bypasses.
+[ ] Create an open broken-item repair and verify it remains active until completed.
+
+OPERATING EXPENSES
+[ ] Record gasoline using gallons and price per gallon.
+[ ] Confirm total cost calculates automatically.
+[ ] Record weed eater string, oil, and one general expense.
+[ ] Confirm all appear in expense history and Intelligence categories.
+
+INVENTORY
+[ ] Enter on-hand and reorder quantities.
+[ ] Save an item below reorder level.
+[ ] Confirm the Home dashboard shows the inventory warning.
+
+INTELLIGENCE / HOME
+[ ] Confirm paid revenue, outstanding invoices, maintenance, operating expenses, payroll, and estimated profit update.
+[ ] Compare Current Month, Last 30 Days, and All Time.
+[ ] Confirm Home daily briefing summarizes jobs, overdue invoices, alerts, inventory, revenue, and estimated profit.
+
+IMPORTANT
+This prototype stores data in browser localStorage. Test with sample data only and do not clear browser site data until a database/backup version is created.
+
+
+V3.0 DASHBOARD REVISION
+[ ] Intelligence tab is absent
+[ ] Financial, maintenance, alerts, inventory, and schedule information appears on Home
+[ ] Drag each Home card to a new position
+[ ] Refresh browser and confirm card order remains saved
+[ ] Reset Card Order restores default layout
+[ ] Open Schedule opens Scheduling tab
+[ ] Open Alerts opens Alerts tab
+[ ] Open Calendar scrolls to editable Home maintenance calendar
+[ ] Open Inventory opens Maintenance > Inventory
+[ ] Review Financials and Review Issues scroll to the correct Home cards
+[ ] Logo and grass artwork load without an external images folder
+[ ] Alert cannot close without uploaded proof

@@ -1,0 +1,42 @@
+PARADISE LAWN CARE OPERATIONS SUITE v3.8
+BILLING & OWNER'S DAILY BRIEFING TEST REPORT
+
+BUILD SCOPE
+- Customer billing method: Per Service, Bi-Weekly, Monthly
+- Customer billing anchor/start date
+- Completed schedule services enter billing automatically
+- Billing periods group services by customer
+- Normal invoice numbers remain separate from Customer IDs and Job IDs
+- Generated invoices enter Ready to Email status
+- Billing & Communication Center
+- Home Billing Center card
+- Home Communication Center card
+- Today's Priorities card
+- Owner's Daily Briefing billing notices
+- Demo records updated for all three billing methods
+
+VALIDATION COMPLETED
+PASS - JavaScript syntax check with Node.js
+PASS - No duplicate HTML element IDs
+PASS - All inline event handlers resolve to defined JavaScript functions
+PASS - Billing UI fields exist and are referenced correctly
+PASS - Invoice, Customer ID, and Job ID generators remain independent
+PASS - Schedule save preserves completion and billing linkage metadata
+PASS - Completed services cannot be rebilled after an invoice link is assigned
+PASS - Demo records include Per Service, Bi-Weekly, and Monthly billing examples
+PASS - ZIP archive integrity check
+
+LIMITATION
+A full interactive browser automation framework was not available in the build environment. Runtime logic was checked through syntax, DOM structure, handler resolution, storage linkage review, and archive validation. The package should still be manually tested in Chrome before GitHub publication.
+
+RECOMMENDED MANUAL TEST
+1. Open index.html in Chrome or Visual Studio Live Server.
+2. Install the five demo records.
+3. Open Home and confirm Billing Center, Communication Center, Today's Priorities, and Owner's Daily Briefing populate.
+4. Open Customers and verify the three billing methods and billing date field.
+5. Open Scheduling and mark an Upcoming job Completed.
+6. Return Home and confirm the billing count updates.
+7. Open Billing Center and create a ready invoice.
+8. Confirm the invoice receives an INV number and appears under Ready to Email.
+9. Open the invoice and verify the customer and service lines.
+10. Mark the invoice Emailed and verify the communication count changes.

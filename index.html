@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paradise Lawn Care Operations Suite v3.9</title>
+  <link rel="stylesheet" href="style.css?v=3.9.0">
+</head>
+<body>
+  <div class="app">
+    <nav class="top-tabs" aria-label="Paradise Lawn Care sections">
+      <button type="button" class="tab-button active" data-tab="homeTab">Home</button>
+      <button type="button" class="tab-button" data-tab="invoiceTab">Invoices</button>
+      <button type="button" class="tab-button" data-tab="quoteTab">Quotes</button>
+      <button type="button" class="tab-button" data-tab="scheduleTab">Scheduling</button>
+      <button type="button" class="tab-button" data-tab="customersTab">Customers</button>
+      <button type="button" class="tab-button" data-tab="employeesTab">Employees</button>
+      <button type="button" class="tab-button" data-tab="maintenanceTab">Maintenance</button>
+      <button type="button" class="tab-button alert-tab" data-tab="alertsTab">Alerts <span id="alertCountBadge" class="alert-count">0</span></button>
+    </nav>
+
+    <div class="header">
+      <div class="brand-logo-wrap"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/logo.png" alt="Paradise Lawn Care Logo" class="logo"></div>
+      <div class="company-info">
+        <h1>Paradise Lawn Care, LLC</h1>
+        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.9 — Actionable Dashboard</p>
+        <p>📞 772-323-9401</p>
+        <p>✉ ParadiseLawncare772@gmail.com</p>
+        <p>📍 5685 SE Ault Ave., Suite 1<br>Stuart, FL 34997</p>
+      </div>
+      <div class="grass"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/grass.png" alt="Grass"></div>
+    </div>
+
+    <main>
+      <section id="homeTab" class="tab-panel active">
+        <div class="home-hero"><div><h2 id="dailyGreeting">Good morning.</h2><p id="dailyBriefText">Your complete Paradise Lawn Care company newspaper.</p></div><div class="compact-actions"><button type="button" onclick="refreshHomeDashboard()">Refresh Briefing</button><button type="button" class="secondary-button" onclick="resetDashboardLayout()">Reset Card Order</button></div></div>
+        <p class="dashboard-help">Drag cards by their header to place the most important information where you want it. The arrangement is saved on this computer.</p>
+        <div id="homeMetricCards" class="intelligence-cards"></div>
+        <div id="homeDashboardGrid" class="dashboard-grid">
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="schedule"><div class="dashboard-card-header"><h3>Today's Schedule</h3><button type="button" onclick="openDashboardSection('scheduleTab')">Open Schedule</button></div><div id="homeTodaySchedule"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="attention"><div class="dashboard-card-header"><h3>Immediate Attention</h3><button type="button" onclick="openDashboardSection('alertsTab')">Open Alerts</button></div><div id="homeAttention"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="upcoming"><div class="dashboard-card-header"><h3>Upcoming Maintenance Calendar</h3><button type="button" id="openMaintenanceCalendarButton">Open Calendar</button></div><div id="homeUpcoming"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="inventory"><div class="dashboard-card-header"><h3>Inventory Warnings</h3><button type="button" onclick="openMaintenanceSubtab('inventoryMaintPanel')">Open Inventory</button></div><div id="homeInventory"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="financial"><div class="dashboard-card-header"><h3>Financial Overview</h3><button type="button" id="openFinancialOverviewButton">Review Financials</button></div><div id="homeFinancialOverview"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="billing"><div class="dashboard-card-header"><h3>Billing Center</h3><button type="button" onclick="openBillingCenter()">Review Billing</button></div><div id="homeBillingCenter"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="communication"><div class="dashboard-card-header"><h3>Communication Center</h3><button type="button" onclick="openBillingCenter()">Open Queue</button></div><div id="homeCommunicationCenter"></div></section>
+          <section class="insight-panel wide-panel dashboard-card" draggable="true" data-card-id="priorities"><div class="dashboard-card-header"><h3>Today's Priorities</h3><button type="button" onclick="refreshHomeDashboard()">Refresh</button></div><div id="homePriorities"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="issues"><div class="dashboard-card-header"><h3>Maintenance & Repair Issues</h3><button type="button" onclick="openMaintenanceIssues()">Review Issues</button></div><div id="homeMaintenanceIssues"></div></section>
+          <section class="insight-panel wide-panel dashboard-card" draggable="true" data-card-id="briefing"><div class="dashboard-card-header"><h3>Owner's Daily Briefing</h3><button type="button" onclick="refreshHomeDashboard()">Refresh</button></div><div id="ownerBriefing" class="owner-briefing"></div></section>
+        </div>
+        <section id="homeMaintenanceCalendarSection" class="section maintenance-calendar-section">
+          <div class="module-heading">
+            <div><h3>Editable Maintenance Calendar</h3><p>Schedule future service dates while automatic hour and mileage warnings continue to run.</p></div>
+            <button type="button" onclick="openScheduleMaintenanceModal()">+ Schedule Maintenance</button>
+          </div>
+          <div id="maintenanceCalendar"></div>
+        </section>
+        <p class="small-note">Estimated operating profit equals paid invoice revenue minus recorded maintenance, operating, and payroll expenses. Taxes and owner distributions are not included.</p>
+      </section>
+
+      <section id="invoiceTab" class="tab-panel">
+        <div id="editingBanner" class="editing-banner" hidden>
+          Editing Invoice: <strong id="editingJobNumber"></strong>
+        </div>
+
+        <div class="action-bar compact-actions">
+          <button type="button" onclick="newInvoice()">New Invoice</button>
+          <button type="button" onclick="saveInvoice()">Save Invoice</button>
+          <button type="button" onclick="openInvoiceFinder()">Invoice Finder</button>
+          <button type="button" onclick="emailInvoice()">Email</button>
+          <button type="button" onclick="textInvoice()">Text</button>
+          <button type="button" onclick="viewInvoicePdf()">View PDF</button>
+        </div>
+
+        <div class="section row">
+          <div><label>Invoice Number</label><input id="jobNumber" readonly></div>
+          <div><label>Job ID</label><input id="invoiceJobId" readonly></div>
+          <div><label>Customer ID</label><input id="invoiceCustomerNumber" readonly></div>
+          <div><label>Today Date</label><input type="date" id="todayDate"></div>
+          <div><label>Due Date</label><input type="date" id="dueDate"></div>
+          <div><label>Invoice Status</label><select id="invoiceStatus"><option value="Unpaid">Unpaid</option><option value="Paid">Paid</option></select></div>
+        </div>
+
+        <div class="section">
+          <h3>Client Info</h3>
+          <label>Business Name</label><input id="businessName">
+          <label>Client Name</label><input id="clientName">
+          <label>Billing Address</label><input id="billingAddress">
+          <label>City, State, ZIP</label><input id="cityStateZip">
+          <div class="row">
+            <div><label>Phone</label><input id="phone" inputmode="tel"></div>
+            <div><label>Email</label><input id="email" inputmode="email"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="service-header">
+            <h3>Services Performed</h3>
+            <button type="button" onclick="addServiceRow()">+ Add Service Line</button>
+          </div>
+          <div class="service-labels"><strong>Date</strong><strong>Service Address</strong><strong>Service</strong><strong>Amount</strong></div>
+          <div id="serviceRows"></div>
+          <p class="small-note">Starts with 5 service lines. Maximum 20.</p>
+        </div>
+
+        <div class="section row">
+          <div><label>Tax</label><select id="taxRate"><option value="0">No Tax</option><option value="0.065">Florida Tax 6.5%</option></select></div>
+          <div><label>Payment Method</label><select id="paymentMethod"><option value="0">Cash</option><option value="0">Business Check</option><option value="0">Zelle</option><option value="0.035">Credit Card +3.5%</option></select></div>
+        </div>
+
+        <div class="section invoice-financials">
+          <h3>Financials</h3>
+          <div class="totals"><p>Subtotal: <strong id="subtotal">$0.00</strong></p><p>Total: <strong id="total">$0.00</strong></p></div>
+        </div>
+
+        <div class="invoice-record-links-hidden" aria-hidden="true">
+          <span id="activeRecordStatus">New invoice</span>
+          <select id="invoiceCustomerLink" tabindex="-1"><option value="">Automatically match or select customer</option></select>
+          <select id="invoiceQuoteLink" tabindex="-1"><option value="">No source quote</option></select>
+        </div>
+
+        <div class="section attachment-section invoice-bottom-card">
+          <div class="module-heading"><div><h3>Pictures, Damages & Signed Invoice</h3><p>Files are kept with this invoice on this computer.</p></div><span id="invoiceAttachmentCount" class="attachment-count">0 files</span></div>
+          <div class="attachment-actions">
+            <label class="upload-button">Add Pictures<input id="invoicePhotoInput" type="file" accept="image/*" multiple hidden></label>
+            <button type="button" onclick="openDamageReportModal()">Add Damage Report</button>
+            <label class="upload-button secondary-upload">Upload Signed Invoice<input id="signedInvoiceInput" type="file" accept="application/pdf,image/*" hidden></label>
+          </div>
+          <div id="invoiceAttachmentGallery" class="attachment-gallery"><p class="empty-message">Save or open an invoice to attach files.</p></div>
+          <div id="invoiceDamageList" class="damage-list"></div>
+        </div>
+
+        <div class="section invoice-bottom-card"><label>Notes</label><textarea id="notes" rows="4"></textarea></div>
+        <div class="buttons"><button type="button" class="secondary-button" onclick="resetCurrentInvoice()">Reset Current Invoice</button></div>
+      </section>
+
+      <section id="quoteTab" class="tab-panel">
+        <div class="module-heading"><div><h2>Quote Builder</h2><p>Create, save, search, and convert estimates into invoices.</p></div><div class="compact-actions"><button type="button" onclick="newQuote()">New Quote</button><button type="button" onclick="saveQuote()">Save Quote</button><button type="button" onclick="convertQuoteToInvoice()">Convert to Invoice</button></div></div>
+        <div class="section row"><div><label>Quote Number</label><input id="quoteNumber" readonly></div><div><label>Quote Date</label><input id="quoteDate" type="date"></div><div><label>Valid Through</label><input id="quoteValidThrough" type="date"></div><div><label>Status</label><select id="quoteStatus"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select></div></div>
+        <div class="section"><h3>Customer & Property</h3><div class="row"><div><label>Customer</label><select id="quoteCustomer"></select></div><div><label>Property</label><select id="quoteProperty"></select></div></div><label>Scope of Work</label><textarea id="quoteScope" rows="4"></textarea><div class="row"><div><label>Estimated Amount</label><input id="quoteAmount" type="number" min="0" step="0.01"></div><div><label>Frequency</label><select id="quoteFrequency"><option>One Time</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Seasonal</option></select></div></div><label>Notes</label><textarea id="quoteNotes" rows="3"></textarea></div>
+
+        <div class="section attachment-section"><div class="module-heading"><div><h3>Quote Pictures</h3><p>Property pictures can remain with the quote and follow it when converted to an invoice.</p></div><span id="quoteAttachmentCount" class="attachment-count">0 files</span></div><label class="upload-button">Add Pictures<input id="quotePhotoInput" type="file" accept="image/*" multiple hidden></label><div id="quoteAttachmentGallery" class="attachment-gallery"><p class="empty-message">Save or select a quote to attach pictures.</p></div></div>
+        <div class="section"><h3>Saved Quotes</h3><div id="quoteList" class="record-list"></div></div>
+      </section>
+
+      <section id="scheduleTab" class="tab-panel">
+        <div class="module-heading">
+          <div><h2>Employee Scheduling</h2><p>Seven-day running calendar in 30-minute increments.</p></div>
+          <div class="schedule-controls">
+            <button type="button" onclick="shiftSchedule(-7)">Previous 7 Days</button>
+            <button type="button" onclick="showCurrentWeek()">Current 7 Days</button>
+            <button type="button" onclick="shiftSchedule(7)">Next 7 Days</button>
+            <label class="inline-date">Calendar start date <input type="date" id="scheduleAnchorDate"></label>
+          </div>
+        </div>
+        <div id="scheduleCustomerCard" class="schedule-customer-card" hidden>
+          <div><span>Selected Record</span><strong id="scheduleSelectedRecord">None</strong></div>
+          <div><span>Customer</span><strong id="scheduleSelectedCustomer">—</strong></div>
+          <div><span>Customer ID</span><strong id="scheduleSelectedCustomerId">—</strong></div>
+          <div><span>Address</span><strong id="scheduleSelectedAddress">—</strong></div>
+          <div><span>Phone</span><strong id="scheduleSelectedPhone">—</strong></div>
+          <button type="button" class="secondary-button" onclick="clearScheduleSelection()">Clear</button>
+        </div>
+        <div class="schedule-legend"><strong>Record Type:</strong> Quote or Invoice &nbsp;|&nbsp; <strong>Status:</strong> Scheduled, Assigned, In Progress, Completed, Cancelled</div>
+        <div class="schedule-scroll"><table class="schedule-table"><thead id="scheduleHead"></thead><tbody id="scheduleBody"></tbody></table></div>
+        <div class="module-footer"><button type="button" onclick="saveSchedule()">Save Schedule</button><span id="scheduleSaveStatus"></span></div>
+      </section>
+
+      <section id="customersTab" class="tab-panel">
+        <div class="module-heading"><div><h2>Customers & Property Profiles</h2><p>Keep customer details, property instructions, and job-site information together.</p></div><button type="button" onclick="newCustomer()">New Customer</button></div>
+        <div class="split-layout"><section class="section"><h3>Customer Record</h3><input id="customerId" type="hidden"><div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div><div class="row"><div><label>Customer Name</label><input id="customerName"></div><div><label>Business Name</label><input id="customerBusiness"></div></div><div class="row"><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail"></div></div><label>Billing Address</label><input id="customerBilling"><div class="billing-settings"><h4>Billing Schedule</h4><div class="row"><div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div><div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div></div><p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p></div><label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea><div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div></section><section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section></div>
+        <div class="section"><div class="module-heading"><div><h3>Property Profiles</h3><p>Store site-specific details employees need before arrival.</p></div><button type="button" onclick="addPropertyRow()">+ Add Property</button></div><div id="propertyRows"></div></div>
+        <div class="section customer-invoice-section"><div class="module-heading"><div><h3>Customer Invoice History</h3><p>Search and open every invoice connected to the selected customer.</p></div><span id="customerInvoiceCount" class="attachment-count">0 invoices</span></div><input id="customerInvoiceSearch" type="search" placeholder="Search invoice number, date, address, amount, or status"><div id="customerInvoiceHistory" class="customer-invoice-history"><p class="empty-message">Select a customer to view invoice history.</p></div></div>
+      </section>
+
+      <section id="employeesTab" class="tab-panel">
+        <div class="module-heading"><div><h2>Employee Management</h2><p>Track contact details, pay rates, certifications, and employment status.</p></div><button type="button" onclick="newEmployee()">New Employee</button></div>
+        <div class="split-layout"><section class="section"><h3>Employee Record</h3><input id="employeeId" type="hidden"><div class="row"><div><label>Name</label><input id="employeeName"></div><div><label>Status</label><select id="employeeStatus"><option>Active</option><option>Inactive</option><option>Vacation</option></select></div></div><div class="row"><div><label>Phone</label><input id="employeePhone"></div><div><label>Pay Rate</label><input id="employeePayRate" type="number" min="0" step="0.01"></div></div><label>Emergency Contact</label><input id="employeeEmergency"><label>Certifications / Skills</label><input id="employeeSkills"><label>Equipment Assigned</label><input id="employeeEquipment"><label>Notes</label><textarea id="employeeNotes" rows="3"></textarea><button type="button" onclick="saveEmployee()">Save Employee</button></section><section class="section"><h3>Employee List</h3><div id="employeeList" class="record-list"></div></section></div>
+        <div class="section"><h3>Payroll Expense Entry</h3><div class="expense-entry-grid"><input id="payrollDate" type="date"><select id="payrollEmployee"></select><input id="payrollHours" type="number" min="0" step="0.25" placeholder="Hours"><input id="payrollAmount" type="number" min="0" step="0.01" placeholder="Total pay"><button type="button" onclick="savePayrollExpense()">Record Payroll</button></div><div id="payrollList" class="record-list"></div></div>
+      </section>
+
+      <section id="maintenanceTab" class="tab-panel">
+        <div class="module-heading"><div><h2>Maintenance, Expenses & Inventory</h2><p>Track equipment service, repairs, operating costs, and supplies.</p></div></div>
+        <div class="subtabs"><button class="subtab-button active" data-maint-panel="equipmentMaintPanel">Equipment Maintenance</button><button class="subtab-button" data-maint-panel="expensesMaintPanel">Operating Expenses</button><button class="subtab-button" data-maint-panel="inventoryMaintPanel">Inventory</button></div>
+        <div id="equipmentMaintPanel" class="maint-subpanel active"><div class="module-heading"><div><h3>Equipment Records</h3><p>Up to five units of every equipment type.</p></div><button type="button" onclick="saveMaintenanceRecords()">Save Maintenance Records</button></div><div id="maintenanceEquipment" class="equipment-grid"></div></div>
+        <div id="expensesMaintPanel" class="maint-subpanel"><div class="section"><h3>Record Operating Expense</h3><div class="expense-form"><input id="expenseDate" type="date"><select id="expenseCategory"><option>Gasoline</option><option>Diesel</option><option>Engine Oil</option><option>Hydraulic Fluid</option><option>Oil Filters</option><option>Air Filters</option><option>Fuel Filters</option><option>Weed Eater String</option><option>Blades</option><option>Belts</option><option>Spark Plugs</option><option>Tires / Tire Repair</option><option>Cleaning Supplies</option><option>Small Tools</option><option>Replacement Parts</option><option>Truck Expense</option><option>Trailer Expense</option><option>Insurance</option><option>Advertising</option><option>Office / Software</option><option>Other</option></select><input id="expenseDescription" placeholder="Description"><select id="expenseEquipment"></select><input id="expenseVendor" placeholder="Vendor"><input id="expenseQuantity" type="number" min="0" step="0.01" placeholder="Qty / gallons"><input id="expenseUnitPrice" type="number" min="0" step="0.001" placeholder="Price each / gallon"><input id="expenseTotal" type="number" min="0" step="0.01" placeholder="Total cost"><select id="expensePayment"><option>Business Debit</option><option>Business Credit</option><option>Cash</option><option>Check</option><option>Other</option></select><input id="expenseReference" placeholder="Receipt / reference"><textarea id="expenseNotes" placeholder="Notes"></textarea><button type="button" onclick="saveOperatingExpense()">Save Expense</button></div></div><div class="section"><h3>Expense History</h3><div id="operatingExpenseList" class="record-list"></div></div></div>
+        <div id="inventoryMaintPanel" class="maint-subpanel"><div class="module-heading"><div><h3>Supply Inventory</h3><p>Low-stock items appear on the Home dashboard.</p></div><button type="button" onclick="addInventoryItem()">+ Add Item</button></div><div id="inventoryTable"></div><button type="button" onclick="saveInventory()">Save Inventory</button></div>
+      </section>
+
+      <section id="alertsTab" class="tab-panel">
+        <div class="module-heading">
+          <div><h2>Alerts & Reminders</h2><p>Alerts remain open until completion proof is attached. Proof can be a receipt, photograph, invoice, or repair document.</p></div>
+          <button type="button" onclick="refreshAlerts()">Refresh Alerts</button>
+        </div>
+        <div class="alert-summary" id="alertSummary"></div>
+        <div id="activeAlerts" class="alerts-list"></div>
+        <details class="alert-history-panel"><summary>Completed Alert History</summary><div id="completedAlerts" class="alerts-list"></div></details>
+      </section>
+    </main>
+  </div>
+
+
+  <div id="damageReportModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="damageReportTitle">
+      <div class="modal-header"><h2 id="damageReportTitle">Damage Report</h2><button type="button" class="close-button" onclick="closeDamageReportModal()">×</button></div>
+      <div class="row"><div><label>Date</label><input id="damageDate" type="date"></div><div><label>Status</label><select id="damageStatus"><option>Documented</option><option>Customer Notified</option><option>Resolved</option></select></div></div>
+      <label>Description</label><textarea id="damageDescription" rows="4" placeholder="Describe what was found, where it was located, and any action taken."></textarea>
+      <label>Damage Pictures</label><input id="damagePhotoInput" type="file" accept="image/*" multiple>
+      <div class="compact-actions"><button type="button" onclick="saveDamageReport()">Save Damage Report</button><button type="button" class="secondary-button" onclick="closeDamageReportModal()">Cancel</button></div>
+    </div>
+  </div>
+
+
+  <div id="scheduleRecordFinderModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="scheduleFinderTitle">
+      <div class="modal-header"><h2 id="scheduleFinderTitle">Select Quote or Invoice</h2><button type="button" class="close-button" onclick="closeScheduleRecordFinder()">×</button></div>
+      <input id="scheduleRecordSearch" class="finder-search" type="search" placeholder="Search invoice, quote, job ID, customer ID, customer, phone, or address">
+      <p class="finder-note">Select a record to populate the schedule and customer card.</p>
+      <div id="scheduleRecordResults" class="record-list"></div>
+    </div>
+  </div>
+
+  <div id="invoiceFinderModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="finderTitle">
+      <div class="modal-header"><h2 id="finderTitle">Paradise Invoice Finder</h2><button type="button" class="close-button" onclick="closeInvoiceFinder()">×</button></div>
+      <input id="invoiceSearch" class="finder-search" type="search" placeholder="Search invoice number, job ID, customer ID, customer, date, phone, city, service...">
+      <div class="demo-buttons"><button type="button" onclick="installDemoInvoices()">Install 5 Demo Jobs</button><button type="button" class="danger-button" onclick="deleteDemoInvoices()">Delete Demo Jobs</button></div>
+      <p class="finder-note">Tap any invoice once to open it. Tap the red dot to delete it.</p>
+      <div class="finder-headings"><strong>Invoice Number</strong><strong>Date</strong><strong>Customer / Business</strong><strong>Total</strong><span></span></div>
+      <div id="invoiceList" class="invoice-list"></div><p id="emptyInvoiceMessage" class="empty-message" hidden>No saved invoices found.</p>
+    </div>
+  </div>
+
+  <div id="pdfModal" class="modal" hidden>
+    <div class="modal-card pdf-modal-card">
+      <div class="modal-header"><h2>Invoice PDF Preview</h2><button type="button" class="close-button" onclick="closePdfPreview()">×</button></div>
+      <div id="pdfPreview" class="pdf-preview"></div>
+      <div class="pdf-actions"><button type="button" onclick="printInvoicePreview()">Print / Save as PDF</button></div>
+    </div>
+  </div>
+
+  <div id="proofModal" class="modal" hidden>
+    <div class="modal-card proof-modal-card" role="dialog" aria-modal="true" aria-labelledby="proofTitle">
+      <div class="modal-header"><h2 id="proofTitle">Attach Completion Proof</h2><button type="button" class="close-button" onclick="closeProofModal()">×</button></div>
+      <p id="proofAlertDescription"></p>
+      <label>Receipt, photograph, invoice, or repair document</label>
+      <input id="proofFile" type="file" accept="image/*,.pdf,.doc,.docx">
+      <label>Completion Notes</label><textarea id="proofNotes" rows="3" placeholder="Who completed it, what was done, receipt number, or payment details"></textarea>
+      <p class="small-note">The proof is saved locally in this browser. Files larger than 2 MB are rejected to protect browser storage.</p>
+      <div class="compact-actions"><button type="button" onclick="submitAlertProof()">Save Proof & Complete</button><button type="button" class="secondary-button" onclick="closeProofModal()">Cancel</button></div>
+    </div>
+  </div>
+
+
+  <div id="financialOverviewModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="financialOverviewTitle">
+      <div class="modal-header"><h2 id="financialOverviewTitle">Financial Overview</h2><button type="button" class="close-button" onclick="closeFinancialOverviewModal()">×</button></div>
+      <p class="small-note">Current-month totals from paid invoices, operating expenses, payroll, and maintenance records.</p>
+      <div id="financialOverviewDetail"></div>
+      <div class="compact-actions"><button type="button" onclick="openDashboardSection('invoiceTab');closeFinancialOverviewModal()">Open Invoices</button><button type="button" onclick="openMaintenanceSubtab('expensesMaintPanel');closeFinancialOverviewModal()">Open Expenses</button><button type="button" class="secondary-button" onclick="closeFinancialOverviewModal()">Close</button></div>
+    </div>
+  </div>
+
+  <div id="maintenanceCalendarModal" class="modal" hidden>
+    <div class="modal-card calendar-modal-card" role="dialog" aria-modal="true" aria-labelledby="maintenanceCalendarModalTitle">
+      <div class="modal-header"><h2 id="maintenanceCalendarModalTitle">Upcoming Maintenance Calendar</h2><button type="button" class="close-button" id="closeMaintenanceCalendarButton">×</button></div>
+      <p class="small-note">Add, edit, complete, or remove scheduled maintenance. Changes save automatically on this computer.</p>
+      <div class="compact-actions"><button type="button" id="addMaintenanceCalendarButton">+ Add Maintenance</button><button type="button" class="secondary-button" id="openScheduleMaintenanceButton">Detailed Entry</button></div>
+      <div id="maintenanceCalendarModalContent"></div>
+    </div>
+  </div>
+
+  <div id="scheduleMaintenanceModal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="scheduleMaintenanceTitle">
+      <div class="modal-header"><h2 id="scheduleMaintenanceTitle">Schedule Maintenance</h2><button type="button" class="close-button" onclick="closeScheduleMaintenanceModal()">×</button></div>
+      <div class="maintenance-schedule-form">
+        <label>Date<input id="scheduleMaintDate" type="date"></label>
+        <label>Equipment<input id="scheduleMaintEquipment" placeholder="Example: Zero-Turn Mower #1"></label>
+        <label>Service<select id="scheduleMaintTask"></select></label>
+        <label>Status<select id="scheduleMaintStatus"><option>Scheduled</option><option>Waiting for Parts</option><option>Completed - Awaiting Proof</option></select></label>
+        <label class="full-span">Notes<textarea id="scheduleMaintNotes" rows="3" placeholder="Appointment, parts, employee, or repair details"></textarea></label>
+      </div>
+      <div class="compact-actions"><button type="button" onclick="saveScheduledMaintenance()">Save to Calendar</button><button type="button" class="secondary-button" onclick="closeScheduleMaintenanceModal()">Cancel</button></div>
+    </div>
+  </div>
+
+  <div id="homeJobQuickViewModal" class="modal" hidden>
+    <div class="modal-card home-job-modal" role="dialog" aria-modal="true" aria-labelledby="homeJobQuickViewTitle">
+      <div class="modal-header"><div><h2 id="homeJobQuickViewTitle">Job Details</h2><p id="homeJobQuickViewSubtitle"></p></div><button type="button" class="close-button" onclick="closeHomeJobQuickViewV39()">×</button></div>
+      <div id="homeJobQuickViewDetails" class="job-quick-details"></div>
+      <div id="homeJobQuickViewActions" class="compact-actions"></div>
+    </div>
+  </div>
+
+  <script src="script.js?v=3.9.0"></script>
+  <div class="yard-animation"><div class="grass-line"></div><div class="yard-worker mower">🚜</div><div class="yard-worker trimmer">🧍‍♂️🌿</div><div class="yard-worker blower">🧍‍♂️💨🍂</div></div>
+
+  <div id="billingCenterModal" class="modal" hidden>
+    <div class="modal-content billing-center-modal">
+      <div class="modal-header"><div><h2>Billing & Communication Center</h2><p>Completed services ready for invoice generation, review, and email.</p></div><button type="button" class="modal-close" onclick="closeBillingCenter()">×</button></div>
+      <div id="billingCenterSummary" class="intelligence-cards"></div>
+      <div id="billingCenterList" class="billing-center-list"></div>
+    </div>
+  </div>
+</body>
+</html>

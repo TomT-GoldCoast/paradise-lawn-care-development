@@ -1,0 +1,37 @@
+PARADISE LAWN CARE OPERATIONS SUITE v3.5
+INVOICE MASTER RECORD - REDUNDANT TEST REPORT
+
+BUILD BASIS
+- Built from the verified v3.4 package in a separate folder.
+- The v3.4 ZIP was not modified.
+- Existing localStorage keys were retained so current records remain compatible.
+
+NEW FEATURES CHECKED
+- Invoice links to customer and originating quote.
+- Opening an invoice loads the linked customer record.
+- Opening an invoice loads the linked quote when one exists.
+- Matching schedule entries receive an active-record highlight.
+- Customer record shows searchable invoice history.
+- Invoice supports pictures, damage reports, and signed invoice files.
+- Quote supports property pictures.
+- Quote pictures copy to the invoice when the converted invoice is saved.
+- File blobs are stored separately in IndexedDB instead of crowding localStorage.
+
+REDUNDANT TEST PASS 1 - SOURCE AND STRUCTURE
+PASS - JavaScript syntax validation with Node.
+PASS - No duplicate HTML IDs.
+PASS - Required v3.5 controls and panels exist.
+PASS - Every inline HTML action resolves to a defined JavaScript function.
+PASS - Startup registration occurs after v3.5 extensions are defined.
+
+REDUNDANT TEST PASS 2 - DATA LINKAGE AND REGRESSION INSPECTION
+PASS - Existing invoice storage key preserved.
+PASS - Existing customer, quote, schedule, maintenance, expense, inventory, employee, payroll, alert, and dashboard storage keys preserved.
+PASS - Existing Home, Invoice Finder, PDF, Maintenance Calendar, Financial Overview, operating expense, inventory, and dashboard functions remain in place.
+PASS - New invoice schema adds customerId and quoteId without removing prior fields.
+PASS - Old invoices without IDs can still be matched to customers by email, phone, customer name, or business name.
+PASS - Attachments are isolated by invoice or quote record ID.
+PASS - Damage reports are isolated by invoice ID.
+
+IMPORTANT STORAGE NOTE
+Photographs and signed invoices are stored by the browser on the computer where they are uploaded. Clearing browser site data can remove them. Keep the v3.4 ZIP as a rollback package and back up the computer routinely.
