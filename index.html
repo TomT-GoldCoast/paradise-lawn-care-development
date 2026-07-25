@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paradise Lawn Care Operations Suite v3.12</title>
-  <link rel="stylesheet" href="style.css?v=3.12.0">
+  <title>Paradise Lawn Care Operations Suite v3.14</title>
+  <link rel="stylesheet" href="style.css?v=3.14.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
   <div class="app">
@@ -14,8 +15,10 @@
       <button type="button" class="tab-button" data-tab="quoteTab">Quotes</button>
       <button type="button" class="tab-button" data-tab="scheduleTab">Scheduling</button>
       <button type="button" class="tab-button" data-tab="customersTab">Customers</button>
+       <button type="button" class="tab-button" data-tab="communicationTab">Communications</button>
       <button type="button" class="tab-button" data-tab="employeesTab">Employees</button>
       <button type="button" class="tab-button" data-tab="maintenanceTab">Maintenance</button>
+      <button type="button" class="tab-button" data-tab="weatherTab">Weather</button>
       <button type="button" class="tab-button alert-tab" data-tab="alertsTab">Alerts <span id="alertCountBadge" class="alert-count">0</span></button>
     </nav>
 
@@ -23,7 +26,7 @@
       <div class="brand-logo-wrap"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/logo.png" alt="Paradise Lawn Care Logo" class="logo"></div>
       <div class="company-info">
         <h1>Paradise Lawn Care, LLC</h1>
-        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.12 — Stability Repairs</p>
+        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.13 — Phase A</p>
         <p>📞 772-323-9401</p>
         <p>✉ ParadiseLawncare772@gmail.com</p>
         <p>📍 5685 SE Ault Ave., Suite 1<br>Stuart, FL 34997</p>
@@ -37,8 +40,10 @@
         <p class="dashboard-help">Drag cards by their header to place the most important information where you want it. The arrangement is saved on this computer.</p>
         <div id="homeMetricCards" class="intelligence-cards"></div>
         <div id="homeDashboardGrid" class="dashboard-grid">
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="command"><div class="dashboard-card-header"><h3>Today's Command Center</h3><button type="button" onclick="openDashboardSection('scheduleTab')">Open Route Center</button></div><div id="homeCommandCenter"></div></section>
           <section class="insight-panel dashboard-card" draggable="true" data-card-id="schedule"><div class="dashboard-card-header"><h3>Today's Schedule</h3><button type="button" onclick="openDashboardSection('scheduleTab')">Open Schedule</button></div><div id="homeTodaySchedule"></div></section>
           <section class="insight-panel dashboard-card" draggable="true" data-card-id="attention"><div class="dashboard-card-header"><h3>Immediate Attention</h3><button type="button" onclick="openDashboardSection('alertsTab')">Open Alerts</button></div><div id="homeAttention"></div></section>
+          <section class="insight-panel dashboard-card" draggable="true" data-card-id="weather"><div class="dashboard-card-header"><h3>Service Area Weather</h3><button type="button" onclick="openDashboardSection('weatherTab')">Open Radar</button></div><div id="homeWeatherSummary" class="home-weather-summary"><p class="empty-message">Loading service-area weather...</p></div></section>
           <section class="insight-panel dashboard-card" draggable="true" data-card-id="upcoming"><div class="dashboard-card-header"><h3>Upcoming Maintenance Calendar</h3><button type="button" id="openMaintenanceCalendarButton">Open Calendar</button></div><div id="homeUpcoming"></div></section>
           <section class="insight-panel dashboard-card" draggable="true" data-card-id="inventory"><div class="dashboard-card-header"><h3>Inventory Warnings</h3><button type="button" onclick="openMaintenanceSubtab('inventoryMaintPanel')">Open Inventory</button></div><div id="homeInventory"></div></section>
           <section class="insight-panel dashboard-card" draggable="true" data-card-id="financial"><div class="dashboard-card-header"><h3>Financial Overview</h3><button type="button" id="openFinancialOverviewButton">Review Financials</button></div><div id="homeFinancialOverview"></div></section>
@@ -135,12 +140,12 @@
       </section>
 
       <section id="quoteTab" class="tab-panel">
-        <div class="module-heading"><div><h2>Quote Builder</h2><p>Create, save, search, and convert estimates into invoices.</p></div><div class="compact-actions"><button type="button" onclick="newQuote()">New Quote</button><button type="button" onclick="saveQuote()">Save Quote</button><button type="button" onclick="convertQuoteToInvoice()">Convert to Invoice</button></div></div>
-        <div class="section row"><div><label>Quote Number</label><input id="quoteNumber" readonly></div><div><label>Quote Date</label><input id="quoteDate" type="date"></div><div><label>Valid Through</label><input id="quoteValidThrough" type="date"></div><div><label>Status</label><select id="quoteStatus"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select></div></div>
-        <div class="section"><h3>Customer & Property</h3><div class="row"><div><label>Customer</label><select id="quoteCustomer"></select></div><div><label>Property</label><select id="quoteProperty"></select></div></div><label>Scope of Work</label><textarea id="quoteScope" rows="4"></textarea><div class="row"><div><label>Estimated Amount</label><input id="quoteAmount" type="number" min="0" step="0.01"></div><div><label>Frequency</label><select id="quoteFrequency"><option>One Time</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Seasonal</option></select></div></div><label>Notes</label><textarea id="quoteNotes" rows="3"></textarea></div>
-
-        <div class="section attachment-section"><div class="module-heading"><div><h3>Quote Pictures</h3><p>Property pictures can remain with the quote and follow it when converted to an invoice.</p></div><span id="quoteAttachmentCount" class="attachment-count">0 files</span></div><label class="upload-button">Add Pictures<input id="quotePhotoInput" type="file" accept="image/*" multiple hidden></label><div id="quoteAttachmentGallery" class="attachment-gallery"><p class="empty-message">Save or select a quote to attach pictures.</p></div></div>
-        <div class="section"><h3>Saved Quotes</h3><div id="quoteList" class="record-list"></div></div>
+        <div class="module-heading"><div><h2>Quote Builder</h2><p>Create a complete customer and property record while preparing the quote.</p></div><div class="compact-actions"><button type="button" onclick="newQuote()">New Quote</button><button type="button" onclick="saveQuote()">Save Quote</button><button type="button" onclick="convertQuoteToInvoice()">Convert to Invoice</button></div></div>
+        <div class="section row"><div><label>Quote Number</label><input id="quoteNumber" readonly></div><div><label>Quote Date</label><input id="quoteDate" type="date"></div><div><label>Valid Through</label><input id="quoteValidThrough" type="date"></div><div><label>Status</label><select id="quoteStatus"><option>Draft</option><option>Sent</option><option>Follow Up</option><option>Expiring Soon</option><option>Expired</option><option>Converted</option></select></div></div>
+        <div class="section"><h3>Customer Information</h3><input id="quoteCustomer" type="hidden"><div class="row"><div><label>Customer Name</label><input id="quoteCustomerName" list="quoteCustomerSuggestions" placeholder="Type to search or create a customer"><datalist id="quoteCustomerSuggestions"></datalist></div><div><label>Business Name</label><input id="quoteBusiness"></div></div><div class="row"><div><label>Phone</label><input id="quotePhone" inputmode="tel"></div><div><label>Email</label><input id="quoteEmail" inputmode="email"></div><div><label>Preferred Contact Method</label><select id="quotePreferredContact" class="preferred-contact"><option>Phone</option><option>Email</option><option>Smoke Signal</option></select></div></div></div>
+        <div class="section"><h3>Property & Quote</h3><input id="quoteProperty" type="hidden"><div class="row"><div><label>Property Type</label><select id="quotePropertyType"><option>Residential</option><option>Commercial</option></select></div><div><label>Property Address</label><input id="quotePropertyAddress" placeholder="Street, city, state and ZIP"></div></div><label>Scope of Work</label><textarea id="quoteScope" rows="4"></textarea><div class="row"><div><label>Estimated Amount</label><input id="quoteAmount" type="text" inputmode="decimal" placeholder="$0.00"></div><div><label>Frequency</label><select id="quoteFrequency"><option>One Time</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Seasonal</option></select></div></div><label>Notes</label><textarea id="quoteNotes" rows="3"></textarea></div>
+        <div class="section attachment-section"><div class="module-heading"><div><h3>Quote Pictures</h3><p>Property pictures remain with the quote and follow it when converted.</p></div><span id="quoteAttachmentCount" class="attachment-count">0 files</span></div><label class="upload-button">Add Pictures<input id="quotePhotoInput" type="file" accept="image/*" multiple hidden></label><div id="quoteAttachmentGallery" class="attachment-gallery"><p class="empty-message">Save or select a quote to attach pictures.</p></div></div>
+        <div class="section"><div class="module-heading"><div><h3>Active Saved Quotes</h3><p>Converted quotes remain in customer history and no longer appear in this active list.</p></div><input id="quoteSearch" type="search" placeholder="Search quotes" oninput="renderQuotes()"></div><div id="quoteList" class="record-list"></div></div>
       </section>
 
       <section id="scheduleTab" class="tab-panel">
@@ -161,6 +166,17 @@
           <div><span>Phone</span><strong id="scheduleSelectedPhone">—</strong></div>
           <button type="button" class="secondary-button" onclick="clearScheduleSelection()">Clear</button>
         </div>
+        <section class="section route-center-panel">
+          <div class="module-heading"><div><h3>Phase C Route &amp; Schedule Center</h3><p>Build today's route, estimate drive time and revenue, and prepare late-arrival notices.</p></div><div class="compact-actions"><button type="button" onclick="buildTodayRoute()">Build Today's Route</button><button type="button" class="secondary-button" onclick="clearRouteCenter()">Clear Route</button></div></div>
+          <div id="routeStats" class="route-stat-grid">
+            <div class="route-stat"><span>Jobs</span><strong id="routeJobCount">0</strong></div>
+            <div class="route-stat"><span>Drive Miles</span><strong id="routeMiles">--</strong></div>
+            <div class="route-stat"><span>Drive Time</span><strong id="routeDriveTime">--</strong></div>
+            <div class="route-stat"><span>Expected Revenue</span><strong id="routeRevenue">$0.00</strong></div>
+            <div class="route-stat"><span>Estimated Finish</span><strong id="routeFinish">--</strong></div>
+          </div>
+          <div class="route-layout"><div><div id="routeMap" class="route-map" aria-label="Today's route map"></div><p id="routeStatus" class="small-note" aria-live="polite">Choose Build Today's Route after today's jobs are saved.</p></div><div><h4>Optimized Stop Order</h4><div id="routeStopList" class="route-stop-list"><p class="empty-message">No route built yet.</p></div><div class="compact-actions"><button type="button" onclick="prepareRunningLateNotices()">Prepare Running-Late Notices</button><button type="button" class="secondary-button" onclick="moveIncompleteJobsToTomorrow()">Move Incomplete to Tomorrow</button></div></div></div>
+        </section>
         <div class="schedule-legend"><strong>Record Type:</strong> Quote or Invoice &nbsp;|&nbsp; <strong>Status:</strong> Scheduled, Assigned, In Progress, Completed, Cancelled</div>
         <div class="schedule-scroll"><table class="schedule-table"><thead id="scheduleHead"></thead><tbody id="scheduleBody"></tbody></table></div>
         <div class="module-footer"><button type="button" onclick="saveSchedule()">Save Schedule</button><span id="scheduleSaveStatus"></span></div>
@@ -168,9 +184,17 @@
 
       <section id="customersTab" class="tab-panel">
         <div class="module-heading"><div><h2>Customers & Property Profiles</h2><p>Keep customer details, property instructions, and job-site information together.</p></div><button type="button" onclick="newCustomer()">New Customer</button></div>
-        <div class="split-layout"><section class="section"><h3>Customer Record</h3><input id="customerId" type="hidden"><div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div><div class="row"><div><label>Customer Name</label><input id="customerName"></div><div><label>Business Name</label><input id="customerBusiness"></div></div><div class="row"><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail"></div></div><label>Billing Address</label><input id="customerBilling"><div class="billing-settings"><h4>Billing Schedule</h4><div class="row"><div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div><div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div></div><p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p></div><label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea><div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div></section><section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section></div>
+        <div class="split-layout"><section class="section"><h3>Customer Record</h3><input id="customerId" type="hidden"><div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div><div class="row"><div><label>Customer Name</label><input id="customerName"></div><div><label>Business Name</label><input id="customerBusiness"></div></div><div class="row"><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail"></div><div><label>Preferred Contact Method</label><select id="customerPreferredContact" class="preferred-contact"><option>Phone</option><option>Email</option><option>Smoke Signal</option></select></div></div><label>Billing Address</label><input id="customerBilling"><div class="billing-settings"><h4>Billing Schedule</h4><div class="row"><div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div><div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div></div><p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p></div><label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea><div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div></section><section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section></div>
         <div class="section"><div class="module-heading"><div><h3>Property Profiles</h3><p>Store site-specific details employees need before arrival.</p></div><button type="button" onclick="addPropertyRow()">+ Add Property</button></div><div id="propertyRows"></div></div>
         <div class="section customer-invoice-section"><div class="module-heading"><div><h3>Customer Invoice History</h3><p>Search and open every invoice connected to the selected customer.</p></div><span id="customerInvoiceCount" class="attachment-count">0 invoices</span></div><input id="customerInvoiceSearch" type="search" placeholder="Search invoice number, date, address, amount, or status"><div id="customerInvoiceHistory" class="customer-invoice-history"><p class="empty-message">Select a customer to view invoice history.</p></div></div>
+      </section>
+
+      <section id="communicationTab" class="tab-panel">
+        <div class="module-heading"><div><h2>Communication Center</h2><p>Prepare individual or mass email and text notices without retyping customer information.</p></div></div>
+        <div class="split-layout">
+          <section class="section"><h3>Recipients</h3><div class="row"><div><label>Audience</label><select id="communicationAudience"><option value="all">All Customers</option><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="weekly">Weekly Service</option><option value="biweekly">Biweekly Service</option><option value="monthly">Monthly Service</option><option value="selected">Selected Customers</option></select></div><div><label>Search / Filter</label><input id="communicationSearch" type="search" placeholder="Name, ZIP, route, address"></div></div><div id="communicationRecipients" class="communication-recipient-list"></div></section>
+          <section class="section"><h3>Message</h3><label>Template</label><select id="communicationTemplate"><option value="weather">Weather Delay</option><option value="holiday">Holiday Schedule</option><option value="payment">Payment Reminder</option><option value="appointment">Appointment Reminder</option><option value="completed">Service Completed</option><option value="custom">Custom Message</option></select><label>Subject</label><input id="communicationSubject"><label>Message</label><textarea id="communicationBody" rows="10"></textarea><div class="communication-counts"><span id="communicationEmailCount">0 email recipients</span><span id="communicationTextCount">0 text recipients</span></div><div class="compact-actions"><button type="button" onclick="prepareMassEmail()">Prepare Email</button><button type="button" onclick="prepareMassText()">Prepare Text</button><button type="button" class="secondary-button" onclick="copyCommunicationMessage()">Copy Message</button></div><p class="small-note">Phase A opens the device's email or text application with the recipients and message prepared. Direct bulk sending will require an email/text service connection.</p></section>
+        </div>
       </section>
 
       <section id="employeesTab" class="tab-panel">
@@ -185,6 +209,22 @@
         <div id="equipmentMaintPanel" class="maint-subpanel active"><div class="module-heading"><div><h3>Equipment Records</h3><p>Up to five units of every equipment type.</p></div><button type="button" onclick="saveMaintenanceRecords()">Save Maintenance Records</button></div><div id="maintenanceEquipment" class="equipment-grid"></div></div>
         <div id="expensesMaintPanel" class="maint-subpanel"><div class="section"><h3>Record Operating Expense</h3><div class="expense-form"><input id="expenseDate" type="date"><select id="expenseCategory"><option>Gasoline</option><option>Diesel</option><option>Engine Oil</option><option>Hydraulic Fluid</option><option>Oil Filters</option><option>Air Filters</option><option>Fuel Filters</option><option>Weed Eater String</option><option>Blades</option><option>Belts</option><option>Spark Plugs</option><option>Tires / Tire Repair</option><option>Cleaning Supplies</option><option>Small Tools</option><option>Replacement Parts</option><option>Truck Expense</option><option>Trailer Expense</option><option>Insurance</option><option>Advertising</option><option>Office / Software</option><option>Other</option></select><input id="expenseDescription" placeholder="Description"><select id="expenseEquipment"></select><input id="expenseVendor" placeholder="Vendor"><input id="expenseQuantity" type="number" min="0" step="0.01" placeholder="Qty / gallons"><input id="expenseUnitPrice" type="number" min="0" step="0.001" placeholder="Price each / gallon"><input id="expenseTotal" type="number" min="0" step="0.01" placeholder="Total cost"><select id="expensePayment"><option>Business Debit</option><option>Business Credit</option><option>Cash</option><option>Check</option><option>Other</option></select><input id="expenseReference" placeholder="Receipt / reference"><textarea id="expenseNotes" placeholder="Notes"></textarea><button type="button" onclick="saveOperatingExpense()">Save Expense</button></div></div><div class="section"><h3>Expense History</h3><div id="operatingExpenseList" class="record-list"></div></div></div>
         <div id="inventoryMaintPanel" class="maint-subpanel"><div class="module-heading"><div><h3>Supply Inventory</h3><p>Low-stock items appear on the Home dashboard.</p></div><button type="button" onclick="addInventoryItem()">+ Add Item</button></div><div id="inventoryTable"></div><button type="button" onclick="saveInventory()">Save Inventory</button></div>
+      </section>
+
+
+      <section id="weatherTab" class="tab-panel">
+        <div class="module-heading"><div><h2>Weather Command Center</h2><p>Live weather and animated radar for St. Lucie County, Martin County, and northern Palm Beach County.</p></div><div class="compact-actions"><button type="button" onclick="refreshWeatherCenter()">Refresh Weather</button><button type="button" class="secondary-button" onclick="resetWeatherMap()">Reset Map</button></div></div>
+        <div id="weatherStatus" class="weather-status" aria-live="polite">Open the Weather tab to load live conditions.</div>
+        <div class="weather-metrics">
+          <div class="metric-card"><span>Current</span><strong id="weatherCurrentTemp">--</strong><small id="weatherCurrentText">Loading...</small></div>
+          <div class="metric-card"><span>Rain Chance</span><strong id="weatherRainChance">--</strong><small>Next forecast period</small></div>
+          <div class="metric-card"><span>Wind</span><strong id="weatherWind">--</strong><small id="weatherWindDirection">Service area</small></div>
+          <div class="metric-card"><span>Alerts</span><strong id="weatherAlertCount">0</strong><small>Three-county service area</small></div>
+        </div>
+        <div class="weather-layout">
+          <section class="section weather-radar-panel"><div class="module-heading"><div><h3>Live Animated Radar</h3><p>Centered from Fort Pierce through Jupiter and Palm Beach Gardens.</p></div><div class="radar-controls"><button type="button" id="radarPlayButton" onclick="toggleRadarAnimation()">Pause</button><span id="radarTimeLabel">Loading radar...</span></div></div><div id="weatherRadarMap" aria-label="Animated weather radar map for the Paradise Lawn Care service area"></div><p class="small-note">Radar tiles require an internet connection. Use zoom and drag to inspect approaching storms.</p></section>
+          <section class="section"><h3>Service Area Forecast</h3><div class="weather-location-buttons"><button type="button" onclick="selectWeatherLocation('Fort Pierce',27.4467,-80.3256)">Fort Pierce</button><button type="button" onclick="selectWeatherLocation('Port St. Lucie',27.2730,-80.3582)">Port St. Lucie</button><button type="button" onclick="selectWeatherLocation('Stuart',27.1975,-80.2528)">Stuart</button><button type="button" onclick="selectWeatherLocation('Hobe Sound',27.0595,-80.1364)">Hobe Sound</button><button type="button" onclick="selectWeatherLocation('Jupiter',26.9342,-80.0942)">Jupiter</button><button type="button" onclick="selectWeatherLocation('Palm Beach Gardens',26.8234,-80.1387)">Palm Beach Gardens</button></div><div id="weatherForecastList" class="weather-forecast-list"></div><h3>Active Weather Alerts</h3><div id="weatherAlertsList" class="weather-alert-list"><p class="empty-message">No alerts loaded.</p></div></section>
+        </div>
       </section>
 
       <section id="alertsTab" class="tab-panel">
@@ -292,7 +332,10 @@
     </div>
   </div>
 
-  <script src="script.js?v=3.12.0"></script>
+  <div id="smokeSignalModal" class="modal smoke-signal-modal" hidden><div class="smoke-scene" role="dialog" aria-modal="true" aria-label="Smoke signal animation"><button type="button" class="close-button smoke-close" onclick="closeSmokeSignal()">×</button><div class="smoke-sky"><div class="smoke-cloud smoke-one"></div><div class="smoke-cloud smoke-two"></div><div class="smoke-cloud smoke-three"></div></div><div class="smoke-camper">🧍‍♂️<span class="smoke-blanket">🟫</span></div><div class="smoke-fire">🔥</div><h2 id="smokeSignalMessage">Attempting smoke signal transmission...</h2><p>No response received. Consider trying Phone or Email.</p></div></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js?v=3.14.0"></script>
   <div class="yard-animation"><div class="grass-line"></div><div class="yard-worker mower">🚜</div><div class="yard-worker trimmer">🧍‍♂️🌿</div><div class="yard-worker blower">🧍‍♂️💨🍂</div></div>
 
   <div id="billingCenterModal" class="modal" hidden>
