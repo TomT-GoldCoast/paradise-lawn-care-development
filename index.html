@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paradise Lawn Care Operations Suite v3.17</title>
-  <link rel="stylesheet" href="style.css?v=3.17.0">
+  <title>Paradise Lawn Care Operations Suite v3.19</title>
+  <link rel="stylesheet" href="style.css?v=3.19.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
       <div class="brand-logo-wrap"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/logo.png" alt="Paradise Lawn Care Logo" class="logo"></div>
       <div class="company-info">
         <h1>Paradise Lawn Care, LLC</h1>
-        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.17 — Customer-to-Invoice Workflow</p>
+        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.19 — Preferred Contact &amp; Smoke Signal</p>
         <p>📞 772-323-9401</p>
         <p>✉ ParadiseLawncare772@gmail.com</p>
         <p>📍 5685 SE Ault Ave., Suite 1<br>Stuart, FL 34997</p>
@@ -72,8 +72,9 @@
           <button type="button" onclick="newInvoice()">New Invoice</button>
           <button type="button" onclick="saveInvoice()">Save Invoice</button>
           <button type="button" onclick="openInvoiceFinder()">Invoice Finder</button>
-          <button type="button" onclick="emailInvoice()">Email</button>
-          <button type="button" onclick="textInvoice()">Text</button>
+          <button type="button" id="invoiceEmailAction" onclick="emailInvoice()">Email</button>
+          <button type="button" id="invoiceTextAction" onclick="textInvoice()">Text</button>
+          <button type="button" id="invoiceSmokeAction" onclick="openInvoiceSmokeSignal(this)" hidden>Smoke Signal</button>
           <button type="button" onclick="viewInvoicePdf()">View PDF</button>
         </div>
 
@@ -95,6 +96,10 @@
           <div class="row">
             <div><label>Phone</label><input id="phone" inputmode="tel"></div>
             <div><label>Email</label><input id="email" inputmode="email"></div>
+          </div>
+          <div class="invoice-preferred-contact">
+            <label id="invoicePreferredContactLabel" for="invoicePreferredContact">Preferred Contact</label>
+            <select id="invoicePreferredContact" class="preferred-contact" aria-labelledby="invoicePreferredContactLabel"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select>
           </div>
         </div>
 
@@ -156,7 +161,10 @@
           </div>
           <div class="row quote-contact-details">
             <div><label>Email</label><input id="quoteEmail" inputmode="email" placeholder="customer@example.com"></div>
-            <div><label>Preferred Contact Method</label><select id="quotePreferredContact" class="preferred-contact"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select></div>
+          </div>
+          <div class="quote-preferred-contact">
+            <label id="quotePreferredContactLabel" for="quotePreferredContact">Preferred Contact Method</label>
+            <select id="quotePreferredContact" class="preferred-contact" aria-labelledby="quotePreferredContactLabel"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select>
           </div>
           <label>Scope of Work</label><textarea id="quoteScope" rows="4"></textarea>
           <div class="row"><div><label>Estimated Amount</label><div class="currency-input"><span>$</span><input id="quoteAmount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div><div><label>Frequency</label><select id="quoteFrequency"><option>One Time</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Seasonal</option></select></div></div>
@@ -203,7 +211,37 @@
 
       <section id="customersTab" class="tab-panel">
         <div class="module-heading"><div><h2>Customers & Property Profiles</h2><p>Keep customer details, property instructions, and job-site information together.</p></div><button type="button" onclick="newCustomer()">New Customer</button></div>
-        <div class="split-layout"><section class="section"><h3>Customer Record</h3><input id="customerId" type="hidden"><div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div><div class="row"><div><label>Customer Name</label><input id="customerName"></div><div><label>Business Name</label><input id="customerBusiness"></div></div><div class="row"><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail"></div><div><label>Preferred Contact Method</label><select id="customerPreferredContact" class="preferred-contact"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select></div></div><label>Billing Address</label><input id="customerBilling"><div class="billing-settings"><h4>Billing Schedule</h4><div class="row"><div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div><div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div></div><p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p></div><label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea><div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" onclick="createInvoiceFromCustomerV316()">Create Invoice</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div></section><section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section></div>
+        <div class="split-layout">
+          <section class="section">
+            <h3>Customer Record</h3>
+            <input id="customerId" type="hidden">
+            <div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div>
+            <div class="row">
+              <div><label>Customer Name</label><input id="customerName"></div>
+              <div><label>Business Name</label><input id="customerBusiness"></div>
+            </div>
+            <div class="row">
+              <div><label>Phone</label><input id="customerPhone"></div>
+              <div><label>Email</label><input id="customerEmail"></div>
+            </div>
+            <div class="customer-preferred-contact">
+              <label id="customerPreferredContactLabel" for="customerPreferredContact">Preferred Contact Method</label>
+              <select id="customerPreferredContact" class="preferred-contact" aria-labelledby="customerPreferredContactLabel"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select>
+            </div>
+            <label>Billing Address</label><input id="customerBilling">
+            <div class="billing-settings">
+              <h4>Billing Schedule</h4>
+              <div class="row">
+                <div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div>
+                <div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div>
+              </div>
+              <p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p>
+            </div>
+            <label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea>
+            <div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" onclick="createInvoiceFromCustomerV316()">Create Invoice</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div>
+          </section>
+          <section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section>
+        </div>
         <div class="section"><div class="module-heading"><div><h3>Property Profiles</h3><p>Store site-specific details employees need before arrival.</p></div><button type="button" onclick="addPropertyRow()">+ Add Property</button></div><div id="propertyRows"></div></div>
         <div class="section customer-invoice-section"><div class="module-heading"><div><h3>Customer Invoice History</h3><p>Search and open every invoice connected to the selected customer.</p></div><span id="customerInvoiceCount" class="attachment-count">0 invoices</span></div><input id="customerInvoiceSearch" type="search" placeholder="Search invoice number, date, address, amount, or status"><div id="customerInvoiceHistory" class="customer-invoice-history"><p class="empty-message">Select a customer to view invoice history.</p></div></div>
       </section>
@@ -212,7 +250,7 @@
         <div class="module-heading"><div><h2>Communication Center</h2><p>Prepare individual or mass email and text notices without retyping customer information.</p></div></div>
         <div class="split-layout">
           <section class="section"><h3>Recipients</h3><div class="row"><div><label>Audience</label><select id="communicationAudience"><option value="all">All Customers</option><option value="residential">Residential</option><option value="commercial">Commercial</option><option value="weekly">Weekly Service</option><option value="biweekly">Biweekly Service</option><option value="monthly">Monthly Service</option><option value="selected">Selected Customers</option></select></div><div><label>Search / Filter</label><input id="communicationSearch" type="search" placeholder="Name, ZIP, route, address"></div></div><div id="communicationRecipients" class="communication-recipient-list"></div></section>
-          <section class="section"><h3>Message</h3><label>Template</label><select id="communicationTemplate"><option value="weather">Weather Delay</option><option value="holiday">Holiday Schedule</option><option value="payment">Payment Reminder</option><option value="appointment">Appointment Reminder</option><option value="completed">Service Completed</option><option value="custom">Custom Message</option></select><label>Subject</label><input id="communicationSubject"><label>Message</label><textarea id="communicationBody" rows="10"></textarea><div class="communication-counts"><span id="communicationEmailCount">0 email recipients</span><span id="communicationTextCount">0 text recipients</span></div><div class="compact-actions"><button type="button" onclick="prepareMassEmail()">Prepare Email</button><button type="button" onclick="prepareMassText()">Prepare Text</button><button type="button" class="secondary-button" onclick="copyCommunicationMessage()">Copy Message</button></div><p class="small-note">The device's email or text application opens with recipients and message prepared. Direct bulk sending requires an email/text service connection.</p></section>
+          <section class="section"><h3>Message</h3><label>Template</label><select id="communicationTemplate"><option value="weather">Weather Delay</option><option value="holiday">Holiday Schedule</option><option value="payment">Payment Reminder</option><option value="appointment">Appointment Reminder</option><option value="completed">Service Completed</option><option value="custom">Custom Message</option></select><label>Subject</label><input id="communicationSubject"><label>Message</label><textarea id="communicationBody" rows="10"></textarea><div class="communication-counts"><span id="communicationPhoneCount">0 Phone</span><span id="communicationTextCount">0 Text</span><span id="communicationEmailCount">0 Email</span><span id="communicationSmokeCount">0 Smoke Signal</span></div><div class="compact-actions"><button type="button" onclick="preparePreferredCommunications(this)">Use Preferred Methods</button><button type="button" onclick="prepareMassEmail()">Prepare Email</button><button type="button" onclick="prepareMassText()">Prepare Text</button><button type="button" class="secondary-button" onclick="copyCommunicationMessage()">Copy Message</button></div><p id="communicationStatus" class="communication-status small-note" aria-live="polite">Customer preferences are applied automatically. Smoke Signal is never launched automatically for a mass communication.</p><p class="small-note">The device's email or text application opens with recipients and message prepared. Direct bulk sending requires an email/text service connection.</p></section>
         </div>
       </section>
 
@@ -351,7 +389,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="script.js?v=3.17.0"></script>
+  <script src="script.js?v=3.19.0"></script>
   <div class="yard-animation"><div class="grass-line"></div><div class="yard-worker mower">🚜</div><div class="yard-worker trimmer">🧍‍♂️🌿</div><div class="yard-worker blower">🧍‍♂️💨🍂</div></div>
 
   <div id="billingCenterModal" class="modal" hidden>

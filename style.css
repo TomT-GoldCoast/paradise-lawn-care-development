@@ -699,3 +699,306 @@ button:focus-visible {
 .quote-picker-choice strong{font-size:1.04rem}.quote-picker-choice span{margin-top:4px;color:#647068;font-weight:500}
 .quote-picker-choice:hover,.quote-picker-choice:focus-visible{background:#edf7ed;border-color:#2f7d32;color:#214f28}
 @media(max-width:700px){.quote-touch-selectors{grid-template-columns:1fr}.quote-contact-details{grid-template-columns:1fr}.quote-touch-button{min-height:88px}}
+
+/* v3.19 preferred-contact component, Communications Center, and Smoke Signal */
+.preferred-contact.is-component-source {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.preferred-contact-component {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(108px, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 7px 0 4px;
+}
+.preferred-contact-card {
+  appearance: none;
+  min-width: 0;
+  min-height: 82px;
+  padding: 12px 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #214f28;
+  background: #fff;
+  border: 2px solid #b8d0ba;
+  border-radius: 14px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .08);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.preferred-contact-card:hover,
+.preferred-contact-card:focus-visible {
+  color: #214f28;
+  background: #f3faf3;
+  border-color: #478f52;
+  transform: translateY(-2px);
+}
+.preferred-contact-card[aria-checked="true"] {
+  color: #174d22;
+  background: #e7f6e9;
+  border-color: #237432;
+  box-shadow: 0 0 0 3px rgba(35, 116, 50, .16), 0 6px 16px rgba(0, 0, 0, .12);
+  transform: translateY(-2px);
+}
+.preferred-contact-icon {
+  font-size: 27px;
+  line-height: 1;
+}
+.preferred-contact-label {
+  font-size: 13px;
+  text-align: center;
+}
+.invoice-preferred-contact {
+  margin-top: 12px;
+}
+.customer-preferred-contact,
+.quote-preferred-contact {
+  margin: 12px 0;
+}
+.customer-preferred-contact .preferred-contact-component,
+.quote-preferred-contact .preferred-contact-component,
+.invoice-preferred-contact .preferred-contact-component {
+  max-width: 700px;
+}
+.action-bar button.is-preferred-action {
+  color: #173f20;
+  background: #f3cf63;
+  box-shadow: 0 0 0 3px rgba(240, 124, 0, .22);
+}
+.communication-recipient-list {
+  display: grid;
+  gap: 9px;
+  max-height: 520px;
+  margin-top: 12px;
+  overflow: auto;
+}
+.communication-recipient {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  background: #fff;
+  border: 1px solid #d7e8d7;
+  border-radius: 10px;
+}
+.communication-recipient.is-selected {
+  border-color: #5b9a64;
+  box-shadow: inset 4px 0 0 #2f7d32;
+}
+.communication-recipient-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  cursor: pointer;
+}
+.communication-recipient-choice input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+.communication-recipient-details {
+  min-width: 0;
+}
+.communication-recipient-details strong,
+.communication-recipient-details span,
+.communication-recipient-details small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.communication-recipient-details span,
+.communication-recipient-details small {
+  margin-top: 3px;
+  color: #637064;
+  font-weight: 500;
+}
+.communication-method-badge {
+  display: inline-flex !important;
+  width: fit-content;
+  margin-top: 6px !important;
+  padding: 4px 8px;
+  color: #245f27 !important;
+  background: #e8f4e8;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800 !important;
+}
+.communication-recipient-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.communication-recipient-actions button {
+  min-height: 36px;
+  padding: 7px 9px;
+  font-size: 12px;
+}
+.communication-recipient-actions button.is-preferred-action {
+  color: #173f20;
+  background: #f3cf63;
+}
+.communication-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 12px 0;
+}
+.communication-counts span {
+  padding: 8px 6px;
+  color: #285a30;
+  background: #eef7ee;
+  border: 1px solid #c8ddca;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+.communication-status {
+  min-height: 20px;
+  padding: 9px 10px;
+  color: #31553a;
+  background: #f3f8f3;
+  border-left: 4px solid #2f7d32;
+  border-radius: 6px;
+}
+.smoke-signal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  color: #fff;
+  background: #000;
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+.smoke-signal-overlay.is-open {
+  opacity: 1;
+}
+.smoke-signal-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+.smoke-signal-player-shell {
+  position: absolute;
+  inset: 7vh 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+.smoke-signal-player,
+.smoke-signal-player iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+}
+.smoke-signal-close {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  z-index: 8;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  color: #fff;
+  background: rgba(0, 0, 0, .75);
+  border: 1px solid rgba(255, 255, 255, .78);
+  border-radius: 50%;
+  font-size: 28px;
+  line-height: 1;
+}
+.smoke-signal-status {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 7;
+  max-width: 760px;
+  margin: auto;
+  padding: 11px 14px;
+  color: #fff;
+  background: rgba(0, 0, 0, .72);
+  border-radius: 12px;
+  text-align: center;
+  font-size: clamp(15px, 2.5vw, 20px);
+  font-weight: 800;
+  text-shadow: 0 2px 8px #000;
+}
+.smoke-signal-play {
+  position: absolute;
+  left: 50%;
+  bottom: max(92px, calc(env(safe-area-inset-bottom) + 92px));
+  z-index: 9;
+  min-width: 150px;
+  transform: translateX(-50%);
+  color: #173f20;
+  background: #f3cf63;
+}
+.smoke-signal-final {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  color: #fff;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .7s ease;
+  text-align: center;
+  font-size: clamp(25px, 5vw, 46px);
+  font-weight: 900;
+  line-height: 1.3;
+}
+.smoke-signal-final.is-visible {
+  opacity: 1;
+}
+body.smoke-signal-active {
+  overflow: hidden !important;
+}
+@media(max-width:760px) {
+  .preferred-contact-component {
+    grid-template-columns: repeat(2, minmax(122px, 1fr));
+  }
+  .communication-recipient {
+    grid-template-columns: 1fr;
+  }
+  .communication-recipient-actions {
+    justify-content: flex-start;
+  }
+  .communication-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .smoke-signal-player-shell {
+    inset: 12vh 0;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .preferred-contact-card,
+  .smoke-signal-overlay,
+  .smoke-signal-final {
+    transition: none;
+  }
+}

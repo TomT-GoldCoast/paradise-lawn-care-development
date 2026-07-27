@@ -1,21 +1,35 @@
-PARADISE LAWN CARE - COMPLETE DEVELOPMENT COPY
-Version 3.18
+PARADISE LAWN CARE OPERATIONS SUITE
+Version 3.19
 
-This is the only folder needed for the current development release.
+Header:
+Operations Suite v3.19 — Preferred Contact & Smoke Signal
 
-Included:
-- Home command center and draggable cards
-- Invoices and PDF preview
-- Touch-friendly quote customer and property selection
-- Quote address, phone, email, preferred contact and U.S. currency fields
-- Customer records with Phone, Text, Email and Smoke Signal preferences
-- Touch-friendly invoice property selection and Select All Properties
-- Scheduling, route mapping and mileage estimates
-- Communications, weather/radar, employees, maintenance, inventory and alerts
+This repository contains the complete browser application. Core application code
+is stored in script.js and does not load from an earlier GitHub commit.
 
-To update GitHub:
-1. Copy everything inside this folder into the clean Paradise Development repository folder.
-2. Choose Replace files when Windows asks.
-3. Test index.html with Go Live.
-4. Commit as: Paradise Lawn Care v3.18 Complete
-5. Push origin.
+Version 3.19 includes:
+- One canonical preferredContact field across Customers, Quotes, and Invoices
+- Backward-compatible migration for existing localStorage records
+- Touch-friendly Phone, Text, Email, and Smoke Signal selection cards
+- Quote preference inheritance and manual override
+- Invoice preference display, override, and highlighted communication actions
+- Restored Communication Center audience filters, customer selection, totals,
+  Email/Text overrides, Phone actions, and preference-aware preparation
+- Full-screen Smoke Signal controller using the official YouTube IFrame API
+- Two-play handling, manual Play fallback, Escape/manual close, API/offline
+  handling, duplicate-overlay prevention, and interface-state restoration
+- Existing dashboards, invoices, quotes, customers, scheduling, routing,
+  weather/radar, employees, payroll, maintenance, expenses, inventory, alerts,
+  PDF preview, attachments, demo records, and localStorage keys retained
+
+Development checks:
+1. Run npm ci.
+2. Run npm run check.
+3. Open index.html through a local web server for final Chrome desktop/mobile
+   verification.
+4. Review TESTING_REPORT_v3.19.md before merging.
+
+Production note:
+Do not clear browser site data without a backup. Customer, quote, invoice,
+schedule, maintenance, expense, inventory, payroll, and alert data remain local
+to the browser profile.
