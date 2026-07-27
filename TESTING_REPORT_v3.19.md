@@ -17,6 +17,8 @@ Runtime: Node.js 24.14.0, npm 11.9.0
 - Duplicate HTML ID validation: PASS
 - Inline `onclick` handler validation: PASS
 - Repository-local core asset / GitHub Pages validation: PASS
+- Preferred Contact launch tests use actual card clicks rather than direct controller calls: PASS
+- v3.19.1 asset cache revision validation: PASS
 - Desktop DOM run at 1440 × 900: PASS, no captured console errors
 - Mobile DOM run at 390 × 844: PASS, no captured console errors
 
@@ -30,7 +32,7 @@ Runtime: Node.js 24.14.0, npm 11.9.0
 - Preservation of customer, quote, job, and invoice identifiers
 - Communication Center audiences: All, Residential, Commercial, Weekly, Biweekly, Monthly, and Selected
 - Communication Center Phone, Text, Email, and Smoke Signal totals
-- Smoke Signal card launch from Customers, Quotes, and Invoices
+- One-tap Smoke Signal card launch from Customers, Quotes, and Invoices using actual DOM card clicks
 - Explicit individual Smoke Signal action in the Communication Center
 - Single-recipient and mixed mass communication behavior without automatic Smoke Signal launch
 - Scheduling selection and linked record display

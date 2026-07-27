@@ -164,9 +164,10 @@ const PreferredContactComponent = (() => {
       button.setAttribute("role", "radio");
       button.setAttribute("aria-checked", "false");
       button.innerHTML = `<span class="preferred-contact-icon" aria-hidden="true">${method.icon}</span><span class="preferred-contact-label">${method.value}</span>`;
-      button.addEventListener("click", () => {
-        setValue(select, method.value, { emit: true });
-        if (method.value === "Smoke Signal") openSmokeSignal(button);
+      button.addEventListener("click", (event) => {
+        const activatedButton = event.currentTarget;
+        const preferredContact = setValue(select, activatedButton.dataset.value, { emit: true });
+        if (preferredContact === "Smoke Signal") openSmokeSignal(activatedButton);
       });
       button.addEventListener("keydown", (event) => {
         const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
