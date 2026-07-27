@@ -10,11 +10,15 @@ is stored in script.js and does not load from an earlier GitHub commit.
 Version 3.19 includes:
 - One canonical preferredContact field across Customers, Quotes, and Invoices
 - Backward-compatible migration for existing localStorage records
-- Touch-friendly Phone, Text, Email, and Smoke Signal selection cards
+- Touch-friendly Phone, Text, Email, and Smoke Signal selection cards, with the
+  Smoke Signal card launching the shared controller from Customers, Quotes,
+  and Invoices
 - Quote preference inheritance and manual override
 - Invoice preference display, override, and highlighted communication actions
 - Restored Communication Center audience filters, customer selection, totals,
-  Email/Text overrides, Phone actions, and preference-aware preparation
+  Email/Text overrides, Phone actions, an explicit per-customer Smoke Signal
+  action, and preference-aware preparation that never auto-launches Smoke
+  Signal during mass communication
 - Full-screen Smoke Signal controller using the official YouTube IFrame API
 - Two-play handling, manual Play fallback, Escape/manual close, API/offline
   handling, duplicate-overlay prevention, and interface-state restoration

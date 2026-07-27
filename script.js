@@ -164,7 +164,10 @@ const PreferredContactComponent = (() => {
       button.setAttribute("role", "radio");
       button.setAttribute("aria-checked", "false");
       button.innerHTML = `<span class="preferred-contact-icon" aria-hidden="true">${method.icon}</span><span class="preferred-contact-label">${method.value}</span>`;
-      button.addEventListener("click", () => setValue(select, method.value, { emit: true }));
+      button.addEventListener("click", () => {
+        setValue(select, method.value, { emit: true });
+        if (method.value === "Smoke Signal") openSmokeSignal(button);
+      });
       button.addEventListener("keydown", (event) => {
         const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
         if (!keys.includes(event.key)) return;
@@ -917,18 +920,8 @@ function updateInvoicePreferredContactActions(value = PreferredContactComponent.
   const preferred = normalizePreferredContact(value);
   const emailAction = byId("invoiceEmailAction");
   const textAction = byId("invoiceTextAction");
-  const smokeAction = byId("invoiceSmokeAction");
   emailAction?.classList.toggle("is-preferred-action", preferred === "Email");
   textAction?.classList.toggle("is-preferred-action", preferred === "Text");
-  if (smokeAction) {
-    smokeAction.hidden = preferred !== "Smoke Signal";
-    smokeAction.classList.toggle("is-preferred-action", preferred === "Smoke Signal");
-  }
-}
-
-function openInvoiceSmokeSignal(sourceElement) {
-  PreferredContactComponent.setValue("invoicePreferredContact", "Smoke Signal", { emit: true });
-  return openSmokeSignal(sourceElement);
 }
 
 function viewInvoicePdf() {
@@ -1448,15 +1441,21 @@ function renderCommunicationRecipients() {
     const contact = [customer.phone, customer.email].filter(Boolean).join(" · ") || "No phone or email saved";
     const address = customer.properties?.[0]?.address || customer.billing || "No address saved";
     const preferredAction = preferred === "Phone" ? "Call" : preferred;
+    const preferredButton = preferred === "Smoke Signal"
+      ? ""
+      : `<button type="button" class="is-preferred-action" data-communication-action="preferred" data-customer-id="${escapeHtml(customer.id)}">${escapeHtml(preferredAction)}</button>`;
+    const smokeClass = preferred === "Smoke Signal" ? " class=\"is-preferred-action\"" : "";
+    const smokeLabel = preferred === "Smoke Signal" ? "Smoke Signal (Preferred)" : "Smoke Signal";
     return `<article class="communication-recipient ${checked ? "is-selected" : ""}" data-communication-row="${escapeHtml(customer.id)}">
       <label class="communication-recipient-choice">
         <input type="checkbox" data-communication-customer="${escapeHtml(customer.id)}" ${checked ? "checked" : ""}>
         <span class="communication-recipient-details"><strong>${escapeHtml(customer.name || customer.business || "Customer")}</strong><span>${escapeHtml(contact)}</span><small>${escapeHtml(address)}</small><span class="communication-method-badge">Preferred: ${escapeHtml(preferred)}</span></span>
       </label>
       <div class="communication-recipient-actions">
-        <button type="button" class="is-preferred-action" data-communication-action="preferred" data-customer-id="${escapeHtml(customer.id)}">${escapeHtml(preferredAction)}</button>
+        ${preferredButton}
         <button type="button" data-communication-action="Email" data-customer-id="${escapeHtml(customer.id)}">Email</button>
         <button type="button" data-communication-action="Text" data-customer-id="${escapeHtml(customer.id)}">Text</button>
+        <button type="button"${smokeClass} data-communication-action="Smoke Signal" data-customer-id="${escapeHtml(customer.id)}">${smokeLabel}</button>
       </div>
     </article>`;
   }).join("") : '<p class="empty-message">No customers match this audience and search.</p>';
@@ -1550,6 +1549,11 @@ function preparePreferredCommunications(sourceElement) {
     return;
   }
   if (customers.length === 1) {
+    if (preferredContactForRecord(customers[0]) === "Smoke Signal") {
+      updateCommunicationCounts();
+      setCommunicationStatus("Smoke Signal was not launched. Use this customer's individual Smoke Signal action; mass communications never launch it automatically.");
+      return;
+    }
     prepareCustomerCommunication(customers[0].id, null, sourceElement);
     return;
   }

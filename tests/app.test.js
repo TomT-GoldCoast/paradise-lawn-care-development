@@ -137,6 +137,12 @@ function metricValue(document, label) {
   return card?.querySelector("strong")?.textContent;
 }
 
+function setPreferredWithoutLaunch(app, selectId, value) {
+  const select = app.document.querySelector(`#${selectId}`);
+  select.value = value;
+  select.dispatchEvent(new app.window.Event("change", { bubbles: true }));
+}
+
 test("v3.19 identifiers, cache keys, and Billing Center dialog structure agree", () => {
   assert.match(html, /<title>Paradise Lawn Care Operations Suite v3\.19<\/title>/);
   assert.match(html, /Operations Suite v3\.19 — Preferred Contact &amp; Smoke Signal/);
@@ -403,6 +409,74 @@ test("Preferred Contact cards are reusable, touch-oriented, and keyboard accessi
   assert.match(style, /\.preferred-contact-card\s*\{[\s\S]*min-height:\s*82px/);
 });
 
+test("Customer Smoke Signal card launches the reusable controller", async (t) => {
+  const app = await createApp({ youtube: true });
+  t.after(app.close);
+  const card = app.document.querySelector('#customerPreferredContact + .preferred-contact-component [data-value="Smoke Signal"]');
+
+  card.click();
+  await wait(20);
+
+  assert.equal(app.document.querySelector("#customerPreferredContact").value, "Smoke Signal");
+  assert.equal(app.document.querySelectorAll("#smokeSignalOverlay").length, 1);
+  assert.equal(app.window.__youtubeTracker.videoId, "HyRSa7rYSRE");
+  assert.equal(app.window.__youtubeTracker.playCalls, 1);
+  app.evaluate("closeSmokeSignal()");
+});
+
+test("Quote Smoke Signal card launches the reusable controller", async (t) => {
+  const app = await createApp({ youtube: true });
+  t.after(app.close);
+  const card = app.document.querySelector('#quotePreferredContact + .preferred-contact-component [data-value="Smoke Signal"]');
+
+  card.click();
+  await wait(20);
+
+  assert.equal(app.document.querySelector("#quotePreferredContact").value, "Smoke Signal");
+  assert.equal(app.document.querySelectorAll("#smokeSignalOverlay").length, 1);
+  assert.equal(app.window.__youtubeTracker.playCalls, 1);
+  app.evaluate("closeSmokeSignal()");
+});
+
+test("Invoice Smoke Signal card launches the controller without a duplicate toolbar action", async (t) => {
+  const app = await createApp({ youtube: true });
+  t.after(app.close);
+  const card = app.document.querySelector('#invoicePreferredContact + .preferred-contact-component [data-value="Smoke Signal"]');
+
+  assert.equal(app.document.querySelector("#invoiceSmokeAction"), null);
+  card.click();
+  await wait(20);
+
+  assert.equal(app.document.querySelector("#invoicePreferredContact").value, "Smoke Signal");
+  assert.equal(app.document.querySelectorAll("#smokeSignalOverlay").length, 1);
+  assert.equal(app.window.__youtubeTracker.playCalls, 1);
+  app.evaluate("closeSmokeSignal()");
+});
+
+test("Communication Center explicit individual Smoke Signal action launches the controller", async (t) => {
+  const app = await createApp({ youtube: true });
+  t.after(app.close);
+  app.evaluate(`
+    writeArray("paradise_customers_v2", [{
+      id: "communication-smoke-launch",
+      name: "Communication Launch Customer",
+      email: "launch@example.com",
+      preferredContact: "Email"
+    }]);
+    renderCommunicationRecipients();
+  `);
+  const action = app.document.querySelector('[data-communication-action="Smoke Signal"][data-customer-id="communication-smoke-launch"]');
+
+  assert.ok(action);
+  action.click();
+  await wait(20);
+
+  assert.equal(app.document.querySelectorAll("#smokeSignalOverlay").length, 1);
+  assert.equal(app.window.__youtubeTracker.playCalls, 1);
+  assert.match(app.document.querySelector("#communicationStatus").textContent, /Opening Smoke Signal/);
+  app.evaluate("closeSmokeSignal()");
+});
+
 test("customer Preferred Contact saves canonically and reloads without losing identifiers", async (t) => {
   const app = await createApp();
   t.after(app.close);
@@ -411,7 +485,7 @@ test("customer Preferred Contact saves canonically and reloads without losing id
   app.document.querySelector("#customerPhone").value = "772-555-0144";
   app.document.querySelector("#customerEmail").value = "signal@example.com";
   app.document.querySelector("#customerBilling").value = "19 Signal Trail";
-  app.document.querySelector('#customerPreferredContact + .preferred-contact-component [data-value="Smoke Signal"]').click();
+  setPreferredWithoutLaunch(app, "customerPreferredContact", "Smoke Signal");
   app.evaluate("saveCustomer()");
 
   const saved = app.evaluate('readArray("paradise_customers_v2")[0]');
@@ -472,7 +546,7 @@ test("quotes inherit, override, save, and reload Preferred Contact while preserv
   app.evaluate("newQuote()");
   app.evaluate(`loadQuote(${JSON.stringify(saved.id)})`);
   assert.equal(app.document.querySelector("#quotePreferredContact").value, "Text");
-  app.document.querySelector('#quotePreferredContact + .preferred-contact-component [data-value="Smoke Signal"]').click();
+  setPreferredWithoutLaunch(app, "quotePreferredContact", "Smoke Signal");
   app.document.querySelector("#quoteNotes").value = "Manual quote override";
   app.evaluate("saveQuote()");
 
@@ -522,7 +596,7 @@ test("quote conversion transfers Preferred Contact and all record identifiers in
   assert.equal(app.document.querySelector("#invoiceJobId").value, "J-2026-0199");
   assert.equal(app.document.querySelector("#invoiceCustomerNumber").value, "C-CONVERSION-001");
   assert.equal(app.document.querySelector("#invoiceQuoteLink").value, "quote-conversion");
-  assert.equal(app.document.querySelector("#invoiceSmokeAction").hidden, false);
+  assert.equal(app.document.querySelector("#invoiceSmokeAction"), null);
   app.evaluate("saveInvoice()");
   await wait();
 
@@ -643,13 +717,16 @@ test("Communication Center supports every audience, totals every method, and nev
   smokeCheckbox.dispatchEvent(new app.window.Event("change", { bubbles: true }));
   assert.equal(app.document.querySelectorAll("[data-communication-row]").length, 4);
   assert.equal(app.document.querySelectorAll("[data-communication-customer]:checked").length, 1);
+  app.evaluate("preparePreferredCommunications(byId('communicationStatus'))");
+  assert.equal(app.document.querySelectorAll("#smokeSignalOverlay").length, 0);
+  assert.match(app.document.querySelector("#communicationStatus").textContent, /mass communications never launch it automatically/);
 });
 
 test("Smoke Signal uses the requested YouTube video and plays exactly twice before auto-closing", async (t) => {
   const app = await createApp({ youtube: true });
   t.after(app.close);
 
-  await app.evaluate('openSmokeSignal(byId("invoiceSmokeAction"))');
+  await app.evaluate('openSmokeSignal(byId("invoiceEmailAction"))');
   await wait(20);
   assert.equal(app.window.__youtubeTracker.videoId, "HyRSa7rYSRE");
   app.window.__youtubeTracker.events.onStateChange({
@@ -704,8 +781,8 @@ test("Smoke Signal manual close restores tab, scroll, focus, and destroys the pl
 test("Smoke Signal handles offline/API failure, autoplay denial, Escape, and duplicate launch", async (t) => {
   const offlineApp = await createApp({ online: false });
   t.after(offlineApp.close);
-  const firstOpen = await offlineApp.evaluate('openSmokeSignal(byId("invoiceSmokeAction"))');
-  const duplicateOpen = await offlineApp.evaluate('openSmokeSignal(byId("invoiceSmokeAction"))');
+  const firstOpen = await offlineApp.evaluate('openSmokeSignal(byId("invoiceEmailAction"))');
+  const duplicateOpen = await offlineApp.evaluate('openSmokeSignal(byId("invoiceEmailAction"))');
   assert.equal(firstOpen, true);
   assert.equal(duplicateOpen, false);
   assert.equal(offlineApp.document.querySelectorAll("#smokeSignalOverlay").length, 1);
@@ -719,7 +796,7 @@ test("Smoke Signal handles offline/API failure, autoplay denial, Escape, and dup
 
   const autoplayApp = await createApp({ youtube: true });
   t.after(autoplayApp.close);
-  await autoplayApp.evaluate('openSmokeSignal(byId("invoiceSmokeAction"))');
+  await autoplayApp.evaluate('openSmokeSignal(byId("invoiceEmailAction"))');
   await wait(20);
   autoplayApp.window.__youtubeTracker.events.onAutoplayBlocked();
   const playButton = autoplayApp.document.querySelector("#smokeSignalOverlay .smoke-signal-play");

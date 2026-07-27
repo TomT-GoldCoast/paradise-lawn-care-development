@@ -13,7 +13,7 @@ Runtime: Node.js 24.14.0, npm 11.9.0
 - JavaScript syntax validation: PASS
 - Existing automated regressions: PASS
 - v3.19 automated regressions: PASS
-- Total: 21 passed, 0 failed, 0 skipped
+- Total: 25 passed, 0 failed, 0 skipped
 - Duplicate HTML ID validation: PASS
 - Inline `onclick` handler validation: PASS
 - Repository-local core asset / GitHub Pages validation: PASS
@@ -30,7 +30,9 @@ Runtime: Node.js 24.14.0, npm 11.9.0
 - Preservation of customer, quote, job, and invoice identifiers
 - Communication Center audiences: All, Residential, Commercial, Weekly, Biweekly, Monthly, and Selected
 - Communication Center Phone, Text, Email, and Smoke Signal totals
-- Mixed mass communication behavior without automatic Smoke Signal launch
+- Smoke Signal card launch from Customers, Quotes, and Invoices
+- Explicit individual Smoke Signal action in the Communication Center
+- Single-recipient and mixed mass communication behavior without automatic Smoke Signal launch
 - Scheduling selection and linked record display
 - Route/schedule supporting state
 - Employees, payroll, operating expenses, inventory, maintenance, weather, radar supporting state, and alerts
