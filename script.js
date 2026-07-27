@@ -1,4 +1,4 @@
-/* Paradise Lawn Care Operations Suite - Version 3.14 */
+/* Paradise Lawn Care Operations Suite - Version 3.16 */
 
 const STORAGE_KEY = "paradise_invoices_v1_2";
 const LAST_MONTH_KEY = "pl_last_month";
@@ -174,7 +174,6 @@ function collectInvoice() {
     cityStateZip: byId("cityStateZip").value.trim(),
     phone: byId("phone").value.trim(),
     email: byId("email").value.trim(),
-    preferredContact: byId("invoicePreferredContact")?.value || "Phone",
     services: collectServiceRows(),
     taxRate: taxSelect.value,
     taxLabel: taxSelect.options[taxSelect.selectedIndex].text,
@@ -227,7 +226,6 @@ function clearInvoiceFields() {
     byId(id).value = "";
   });
   byId("invoiceStatus").value = "Unpaid";
-  if(byId("invoicePreferredContact")) byId("invoicePreferredContact").value = "Phone";
   byId("taxRate").selectedIndex = 0;
   byId("paymentMethod").selectedIndex = 0;
   resetServiceRows();
@@ -284,7 +282,6 @@ function loadInvoice(invoiceId) {
   byId("cityStateZip").value = invoice.cityStateZip || "";
   byId("phone").value = invoice.phone || "";
   byId("email").value = invoice.email || "";
-  if(byId("invoicePreferredContact")) byId("invoicePreferredContact").value = invoice.preferredContact || "Phone";
   byId("taxRate").value = String(invoice.taxRate ?? "0");
   byId("paymentMethod").value = String(invoice.paymentRate ?? "0");
   byId("notes").value = invoice.notes || "";
@@ -868,7 +865,6 @@ function blankCustomerForm() {
   ["customerId","customerName","customerBusiness","customerPhone","customerEmail","customerBilling","customerNotes"].forEach(id => { if(byId(id)) byId(id).value=""; });
   if (byId("propertyRows")) byId("propertyRows").innerHTML = "";
   addPropertyRow();
-  if(byId("customerPreferredContact")) byId("customerPreferredContact").value="Phone";
 }
 function newCustomer(){ blankCustomerForm(); }
 function addPropertyRow(data={}) {
@@ -887,11 +883,11 @@ function saveCustomer(){
   const name=byId("customerName").value.trim(), business=byId("customerBusiness").value.trim();
   if(!name&&!business){alert("Enter a customer or business name.");return;}
   const list=readArray(CUSTOMER_STORAGE_KEY); const id=activeCustomerId||makeId("customer");
-  const item={id,name,business,phone:byId("customerPhone").value.trim(),email:byId("customerEmail").value.trim(),preferredContact:byId("customerPreferredContact")?.value||"Phone",billing:byId("customerBilling").value.trim(),notes:byId("customerNotes").value.trim(),properties:collectProperties(),updatedAt:new Date().toISOString()};
+  const item={id,name,business,phone:byId("customerPhone").value.trim(),email:byId("customerEmail").value.trim(),billing:byId("customerBilling").value.trim(),notes:byId("customerNotes").value.trim(),properties:collectProperties(),updatedAt:new Date().toISOString()};
   const i=list.findIndex(x=>x.id===id); if(i>=0){item.createdAt=list[i].createdAt;list[i]=item;} else {item.createdAt=new Date().toISOString();list.push(item);} writeArray(CUSTOMER_STORAGE_KEY,list); activeCustomerId=id; renderCustomerList(); populateCustomerSelectors(); alert("Customer saved.");
 }
 function renderCustomerList(){ const host=byId("customerList"); if(!host)return; const q=(byId("customerSearch")?.value||"").toLowerCase(); const list=readArray(CUSTOMER_STORAGE_KEY).filter(c=>JSON.stringify(c).toLowerCase().includes(q)); host.innerHTML=list.length?list.map(c=>`<button type="button" class="record-card" onclick="loadCustomer('${c.id}')"><strong>${escapeHtml(c.name||c.business)}</strong><span>${escapeHtml(c.phone||c.email||"No contact entered")}</span><small>${c.properties?.length||0} propert${(c.properties?.length||0)===1?"y":"ies"}</small></button>`).join(""):'<p class="empty-message">No customers saved.</p>'; }
-function loadCustomer(id){ const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===id); if(!c)return; activeCustomerId=id; byId("customerId").value=id; byId("customerName").value=c.name||"";byId("customerBusiness").value=c.business||"";byId("customerPhone").value=c.phone||"";byId("customerEmail").value=c.email||"";if(byId("customerPreferredContact"))byId("customerPreferredContact").value=c.preferredContact||"Phone";byId("customerBilling").value=c.billing||"";byId("customerNotes").value=c.notes||"";byId("propertyRows").innerHTML="";(c.properties?.length?c.properties:[{}]).forEach(addPropertyRow); renderCustomerInvoiceHistory(); }
+function loadCustomer(id){ const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===id); if(!c)return; activeCustomerId=id; byId("customerId").value=id; byId("customerName").value=c.name||"";byId("customerBusiness").value=c.business||"";byId("customerPhone").value=c.phone||"";byId("customerEmail").value=c.email||"";byId("customerBilling").value=c.billing||"";byId("customerNotes").value=c.notes||"";byId("propertyRows").innerHTML="";(c.properties?.length?c.properties:[{}]).forEach(addPropertyRow); renderCustomerInvoiceHistory(); }
 function deleteCurrentCustomer(){ if(!activeCustomerId)return; if(!confirm("Delete this customer and property records?"))return; writeArray(CUSTOMER_STORAGE_KEY,readArray(CUSTOMER_STORAGE_KEY).filter(c=>c.id!==activeCustomerId)); blankCustomerForm();renderCustomerList();populateCustomerSelectors();populateInvoiceLinkSelectors(); }
 function populateCustomerSelectors(){ const list=readArray(CUSTOMER_STORAGE_KEY); const options='<option value="">Select customer</option>'+list.map(c=>`<option value="${c.id}">${escapeHtml(c.name||c.business)}</option>`).join(""); ["quoteCustomer"].forEach(id=>{const el=byId(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}}); }
 function populateQuoteProperties(){ const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===byId("quoteCustomer").value); byId("quoteProperty").innerHTML='<option value="">Select property</option>'+(c?.properties||[]).map((p,i)=>`<option value="${i}">${escapeHtml(p.name||p.address||`Property ${i+1}`)}</option>`).join(""); }
@@ -927,30 +923,12 @@ function saveInventory(){const list=Array.from(document.querySelectorAll(".inven
 
 /* Quotes */
 function quoteSequence(){return `Q-${new Date().getFullYear()}-${String(readArray(QUOTE_STORAGE_KEY).length+1).padStart(4,"0")}`;}
-function customerMatchesQuoteInput(customer){
-  const typed=(byId("quoteCustomerName")?.value||"").trim().toLowerCase();
-  return customer.id===byId("quoteCustomer")?.value || (typed && [customer.name,customer.business,customer.phone,customer.email].some(v=>(v||"").toLowerCase()===typed));
-}
-function findQuoteCustomer(){return readArray(CUSTOMER_STORAGE_KEY).find(customerMatchesQuoteInput);}
-function syncQuoteCustomerFromName(){
-  const c=findQuoteCustomer();
-  byId("quoteCustomer").value=c?.id||"";
-  if(!c)return;
-  byId("quoteCustomerName").value=c.name||c.business||"";byId("quoteBusiness").value=c.business||"";byId("quotePhone").value=c.phone||"";byId("quoteEmail").value=c.email||"";byId("quotePreferredContact").value=c.preferredContact||"Phone";
-  const p=c.properties?.[0];if(p){byId("quoteProperty").value="0";byId("quotePropertyAddress").value=p.address||"";byId("quotePropertyType").value=p.type||"Residential";}
-}
-function newQuote(){activeQuoteId=null;byId("quoteNumber").value=generateJobNumber();byId("quoteDate").value=getLocalDateString();byId("quoteValidThrough").value=getLocalDateString(addDays(new Date(),30));byId("quoteStatus").value="Draft";["quoteCustomer","quoteProperty","quoteCustomerName","quoteBusiness","quotePhone","quoteEmail","quotePropertyAddress","quoteScope","quoteAmount","quoteNotes"].forEach(id=>{if(byId(id))byId(id).value="";});byId("quotePreferredContact").value="Phone";byId("quotePropertyType").value="Residential";renderQuotes();}
-function ensureQuoteCustomerAndProperty(){
-  let customers=readArray(CUSTOMER_STORAGE_KEY);let c=findQuoteCustomer();const name=byId("quoteCustomerName").value.trim(),business=byId("quoteBusiness").value.trim();if(!name&&!business)throw new Error("Enter a customer or business name.");
-  if(!c){c={id:makeId("customer"),customerNumber:typeof generateCustomerNumberV36==="function"?generateCustomerNumberV36():"",name,business,phone:byId("quotePhone").value.trim(),email:byId("quoteEmail").value.trim(),preferredContact:byId("quotePreferredContact").value,billing:"",notes:"",properties:[],createdAt:new Date().toISOString()};customers.push(c);}else{c.name=name||c.name;c.business=business;c.phone=byId("quotePhone").value.trim();c.email=byId("quoteEmail").value.trim();c.preferredContact=byId("quotePreferredContact").value;c.properties=c.properties||[];}
-  const address=byId("quotePropertyAddress").value.trim();let pi=c.properties.findIndex(p=>(p.address||"").toLowerCase()===address.toLowerCase()&&address);if(pi<0&&address){c.properties.push({name:byId("quotePropertyType").value+" Property",type:byId("quotePropertyType").value,address,gateCode:"",mowingHeight:"",hoa:"",warning:"",irrigation:"",notes:""});pi=c.properties.length-1;}if(pi>=0)c.properties[pi].type=byId("quotePropertyType").value;
-  const ci=customers.findIndex(x=>x.id===c.id);customers[ci]=c;writeArray(CUSTOMER_STORAGE_KEY,customers);byId("quoteCustomer").value=c.id;byId("quoteProperty").value=pi>=0?String(pi):"";renderCustomerList();populateCustomerSelectors();return {customer:c,property:pi>=0?c.properties[pi]:null};
-}
-function saveQuote(){let cp;try{cp=ensureQuoteCustomerAndProperty();}catch(e){alert(e.message);return;}const list=readArray(QUOTE_STORAGE_KEY);const id=activeQuoteId||makeId("quote");const item={id,number:byId("quoteNumber").value,date:byId("quoteDate").value,validThrough:byId("quoteValidThrough").value,status:byId("quoteStatus").value,customerId:cp.customer.id,customerName:cp.customer.name||cp.customer.business||"Customer",businessName:cp.customer.business||"",phone:cp.customer.phone||"",email:cp.customer.email||"",preferredContact:cp.customer.preferredContact||"Phone",property:cp.property,propertyType:byId("quotePropertyType").value,scope:byId("quoteScope").value.trim(),amount:cleanMoney(byId("quoteAmount").value),frequency:byId("quoteFrequency").value,notes:byId("quoteNotes").value.trim(),updatedAt:new Date().toISOString()};const i=list.findIndex(x=>x.id===id);if(i>=0){item.createdAt=list[i].createdAt||item.updatedAt;list[i]=item;}else{item.createdAt=item.updatedAt;list.push(item);}writeArray(QUOTE_STORAGE_KEY,list);activeQuoteId=id;byId("quoteAmount").value=item.amount?formatMoney(item.amount):"";renderQuotes();refreshHomeDashboard();alert("Quote and customer record saved.");}
-function quoteStatusClass(status){return "quote-status status-"+String(status||"Draft").toLowerCase().replace(/\s+/g,"-");}
-function renderQuotes(){const host=byId("quoteList");if(!host)return;const term=(byId("quoteSearch")?.value||"").toLowerCase();const list=readArray(QUOTE_STORAGE_KEY).filter(q=>q.status!=="Converted").filter(q=>!term||JSON.stringify(q).toLowerCase().includes(term)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));host.innerHTML=list.length?list.map(q=>`<button type="button" class="record-card quote-record" onclick="loadQuote('${q.id}')"><strong>${escapeHtml(q.number)} · ${escapeHtml(q.customerName)}</strong><span class="${quoteStatusClass(q.status)}">${escapeHtml(q.status)}</span><span>${formatMoney(q.amount)} · ${escapeHtml(q.property?.address||q.frequency||"")}</span><small>${escapeHtml(q.scope||"No scope entered")}</small></button>`).join(""):'<p class="empty-message">No active saved quotes.</p>';}
-function loadQuote(id){const q=readArray(QUOTE_STORAGE_KEY).find(x=>x.id===id);if(!q)return;const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===q.customerId)||{};activeQuoteId=id;byId("quoteNumber").value=q.number||"";byId("quoteDate").value=q.date||"";byId("quoteValidThrough").value=q.validThrough||"";byId("quoteStatus").value=q.status||"Draft";byId("quoteCustomer").value=q.customerId||"";byId("quoteCustomerName").value=c.name||q.customerName||"";byId("quoteBusiness").value=c.business||q.businessName||"";byId("quotePhone").value=c.phone||q.phone||"";byId("quoteEmail").value=c.email||q.email||"";byId("quotePreferredContact").value=c.preferredContact||q.preferredContact||"Phone";byId("quotePropertyAddress").value=q.property?.address||"";byId("quotePropertyType").value=q.property?.type||q.propertyType||"Residential";byId("quoteScope").value=q.scope||"";byId("quoteAmount").value=q.amount?formatMoney(q.amount):"";byId("quoteFrequency").value=q.frequency||"One Time";byId("quoteNotes").value=q.notes||"";renderQuoteAttachments();}
-function convertQuoteToInvoice(){const list=readArray(QUOTE_STORAGE_KEY);const q=list.find(x=>x.id===activeQuoteId);if(!q){alert("Save or select a quote first.");return;}const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===q.customerId);q.status="Converted";q.convertedAt=new Date().toISOString();writeArray(QUOTE_STORAGE_KEY,list);activeInvoiceId=null;pendingInvoiceCustomerId=q.customerId||null;pendingInvoiceQuoteId=q.id;clearInvoiceFields();byId("jobNumber").value=q.number;byId("todayDate").value=getLocalDateString();hideEditingBanner();byId("clientName").value=c?.name||q.customerName;byId("businessName").value=c?.business||q.businessName||"";byId("phone").value=c?.phone||q.phone||"";byId("email").value=c?.email||q.email||"";if(byId("invoicePreferredContact"))byId("invoicePreferredContact").value=c?.preferredContact||q.preferredContact||"Phone";byId("billingAddress").value=c?.billing||"";byId("notes").value=`Converted from quote ${q.number}. ${q.notes||""}`.trim();resetServiceRows([{date:getLocalDateString(),address:q.property?.address||"",service:"Full Service",amount:q.amount}]);calculateTotals();populateInvoiceLinkSelectors({customerId:q.customerId,quoteId:q.id});renderInvoiceAttachments();renderQuotes();switchTab("invoiceTab");}
+function newQuote(){activeQuoteId=null;byId("quoteNumber").value=generateJobNumber();byId("quoteDate").value=getLocalDateString();byId("quoteValidThrough").value=getLocalDateString(addDays(new Date(),30));byId("quoteStatus").value="Draft";byId("quoteCustomer").value="";populateQuoteProperties();["quoteScope","quoteAmount","quoteNotes"].forEach(id=>byId(id).value="");renderQuotes();}
+function saveQuote(){if(!byId("quoteCustomer").value){alert("Select a customer.");return;}const list=readArray(QUOTE_STORAGE_KEY);const id=activeQuoteId||makeId("quote");const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===byId("quoteCustomer").value);const p=c?.properties?.[Number(byId("quoteProperty").value)];const item={id,number:byId("quoteNumber").value,date:byId("quoteDate").value,validThrough:byId("quoteValidThrough").value,status:byId("quoteStatus").value,customerId:c?.id,customerName:c?.name||c?.business||"Customer",property:p||null,scope:byId("quoteScope").value.trim(),amount:Number(byId("quoteAmount").value)||0,frequency:byId("quoteFrequency").value,notes:byId("quoteNotes").value.trim()};const i=list.findIndex(x=>x.id===id);if(i>=0)list[i]=item;else list.push(item);writeArray(QUOTE_STORAGE_KEY,list);activeQuoteId=id;renderQuotes();alert("Quote saved.");}
+function renderQuotes(){const host=byId("quoteList");if(!host)return;const list=readArray(QUOTE_STORAGE_KEY).sort((a,b)=>b.date.localeCompare(a.date));host.innerHTML=list.length?list.map(q=>`<button type="button" class="record-card" onclick="loadQuote('${q.id}')"><strong>${escapeHtml(q.number)} · ${escapeHtml(q.customerName)}</strong><span>${escapeHtml(q.status)} · ${formatMoney(q.amount)}</span><small>${escapeHtml(q.scope||q.frequency)}</small></button>`).join(""):'<p class="empty-message">No quotes saved.</p>';}
+function loadQuote(id){const q=readArray(QUOTE_STORAGE_KEY).find(x=>x.id===id);if(!q)return;activeQuoteId=id;byId("quoteNumber").value=q.number;byId("quoteDate").value=q.date;byId("quoteValidThrough").value=q.validThrough;byId("quoteStatus").value=q.status;byId("quoteCustomer").value=q.customerId||"";populateQuoteProperties();const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===q.customerId);const pi=c?.properties?.findIndex(p=>p.address===q.property?.address);byId("quoteProperty").value=pi>=0?String(pi):"";byId("quoteScope").value=q.scope||"";byId("quoteAmount").value=q.amount||"";byId("quoteFrequency").value=q.frequency||"One Time";byId("quoteNotes").value=q.notes||"";renderQuoteAttachments();}
+function convertQuoteToInvoice(){const q=readArray(QUOTE_STORAGE_KEY).find(x=>x.id===activeQuoteId);if(!q){alert("Save or select a quote first.");return;}const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===q.customerId);activeInvoiceId=null;pendingInvoiceCustomerId=q.customerId||null;pendingInvoiceQuoteId=q.id;clearInvoiceFields();byId("jobNumber").value=q.number;byId("todayDate").value=getLocalDateString();hideEditingBanner();byId("clientName").value=c?.name||q.customerName;byId("businessName").value=c?.business||"";byId("phone").value=c?.phone||"";byId("email").value=c?.email||"";byId("billingAddress").value=c?.billing||"";byId("notes").value=`Converted from quote ${q.number}. ${q.notes||""}`.trim();resetServiceRows([{date:getLocalDateString(),address:q.property?.address||"",service:"Full Service",amount:q.amount}]);calculateTotals();populateInvoiceLinkSelectors({customerId:q.customerId,quoteId:q.id});renderInvoiceAttachments();switchTab("invoiceTab");}
+
 /* Home dashboard and expanded intelligence */
 function getTodayScheduleItems(){const data=getScheduleData(),today=getLocalDateString();return Object.entries(data).filter(([key])=>key.startsWith(today)).map(([key,item])=>({time:key.slice(-4, -2)+":"+key.slice(-2),...item})).sort((a,b)=>a.time.localeCompare(b.time));}
 function lowInventoryItems(){return getInventory().filter(i=>Number(i.quantity)<=Number(i.reorderAt));}
@@ -1693,38 +1671,104 @@ function initializeV39(){byId("homeJobQuickViewModal")?.addEventListener("click"
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(initializeV39,40),{once:true});else setTimeout(initializeV39,40);
 
 
-/* Phase A - communications and Paradise Personality */
-const COMMUNICATION_TEMPLATES={
- weather:{subject:"Paradise Lawn Care Weather Update",body:"Due to current weather and wet lawn conditions, lawn service has been temporarily delayed. We will resume service and update scheduling as soon as conditions safely allow. Thank you for your patience and understanding.\n\nParadise Lawn Care"},
- holiday:{subject:"Paradise Lawn Care Holiday Schedule",body:"Paradise Lawn Care will be operating on an adjusted holiday schedule. Your service will be moved to the next available service day. Thank you for your understanding.\n\nParadise Lawn Care"},
- payment:{subject:"Friendly Payment Reminder",body:"This is a friendly reminder that an invoice remains due. Please contact Paradise Lawn Care with any questions. Thank you for your business."},
- appointment:{subject:"Upcoming Lawn Service",body:"This is a reminder that Paradise Lawn Care has your property scheduled for service. Weather or ground conditions may affect the exact service time."},
- completed:{subject:"Lawn Service Completed",body:"Your scheduled lawn service has been completed. Thank you for choosing Paradise Lawn Care."},
- custom:{subject:"Paradise Lawn Care Update",body:""}
-};
-function communicationCustomers(){const audience=byId("communicationAudience")?.value||"all",term=(byId("communicationSearch")?.value||"").toLowerCase();return readArray(CUSTOMER_STORAGE_KEY).filter(c=>{const props=c.properties||[];const types=props.map(p=>(p.type||"").toLowerCase());const frequency=(c.frequency||"").toLowerCase();const matchAudience=audience==="all"||audience==="selected"||(audience==="residential"&&types.includes("residential"))||(audience==="commercial"&&types.includes("commercial"))||(audience==="weekly"&&frequency==="weekly")||(audience==="biweekly"&&frequency==="biweekly")||(audience==="monthly"&&frequency==="monthly");return matchAudience&&(!term||JSON.stringify(c).toLowerCase().includes(term));});}
-function selectedCommunicationCustomers(){const all=communicationCustomers();if(byId("communicationAudience")?.value!=="selected")return all;const ids=Array.from(document.querySelectorAll('.communication-recipient:checked')).map(x=>x.value);return all.filter(c=>ids.includes(c.id));}
-function renderCommunicationRecipients(){const host=byId("communicationRecipients");if(!host)return;const list=communicationCustomers();host.innerHTML=list.length?list.map(c=>`<label class="communication-recipient-row"><input type="checkbox" class="communication-recipient" value="${c.id}" checked><span><strong>${escapeHtml(c.name||c.business||"Customer")}</strong><small>${escapeHtml(c.preferredContact||"Phone")} · ${escapeHtml(c.phone||c.email||"No contact")}</small></span></label>`).join(""):'<p class="empty-message">No matching customers.</p>';updateCommunicationCounts();}
-function updateCommunicationCounts(){const list=selectedCommunicationCustomers();if(byId("communicationEmailCount"))byId("communicationEmailCount").textContent=`${list.filter(c=>c.email).length} email recipient${list.filter(c=>c.email).length===1?"":"s"}`;if(byId("communicationTextCount"))byId("communicationTextCount").textContent=`${list.filter(c=>c.phone).length} text recipient${list.filter(c=>c.phone).length===1?"":"s"}`;}
-function loadCommunicationTemplate(){const t=COMMUNICATION_TEMPLATES[byId("communicationTemplate")?.value]||COMMUNICATION_TEMPLATES.custom;byId("communicationSubject").value=t.subject;byId("communicationBody").value=t.body;}
-function prepareMassEmail(){const emails=selectedCommunicationCustomers().map(c=>c.email).filter(Boolean);if(!emails.length){alert("No matching customers have email addresses.");return;}location.href=`mailto:?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent(byId("communicationSubject").value)}&body=${encodeURIComponent(byId("communicationBody").value)}`;}
-function prepareMassText(){const phones=selectedCommunicationCustomers().map(c=>c.phone).filter(Boolean);if(!phones.length){alert("No matching customers have phone numbers.");return;}if(phones.length===1)location.href=`sms:${phones[0].replace(/[^0-9+]/g,"")}?body=${encodeURIComponent(byId("communicationBody").value)}`;else{navigator.clipboard?.writeText(byId("communicationBody").value);alert(`${phones.length} phone numbers found. The message was copied. Your device may require texts to be opened one customer at a time until a bulk-text provider is connected.`);}}
-function copyCommunicationMessage(){navigator.clipboard?.writeText(byId("communicationBody").value).then(()=>alert("Message copied."));}
-function openCommunicationCenter(){switchTab("communicationTab");renderCommunicationRecipients();}
-let smokeTimer=null;
-function showSmokeSignal(){const modal=byId("smokeSignalModal");if(!modal)return;modal.hidden=false;clearTimeout(smokeTimer);smokeTimer=setTimeout(closeSmokeSignal,4200);}
-function closeSmokeSignal(){const modal=byId("smokeSignalModal");if(modal)modal.hidden=true;clearTimeout(smokeTimer);}
-function preferredContactChanged(event){if(event.target.value==="Smoke Signal")showSmokeSignal();}
-function initializePhaseA(){
- document.querySelectorAll('.preferred-contact').forEach(el=>el.addEventListener('change',preferredContactChanged));
- if(byId('quoteCustomerName')){byId('quoteCustomerName').addEventListener('change',syncQuoteCustomerFromName);byId('quoteAmount').addEventListener('blur',e=>{const n=cleanMoney(e.target.value);e.target.value=n?formatMoney(n):'';});}
- if(byId('communicationAudience')){['communicationAudience','communicationSearch'].forEach(id=>byId(id).addEventListener(id==='communicationSearch'?'input':'change',renderCommunicationRecipients));byId('communicationRecipients').addEventListener('change',updateCommunicationCounts);byId('communicationTemplate').addEventListener('change',loadCommunicationTemplate);loadCommunicationTemplate();renderCommunicationRecipients();}
- const customers=readArray(CUSTOMER_STORAGE_KEY);if(byId('quoteCustomerSuggestions'))byId('quoteCustomerSuggestions').innerHTML=customers.map(c=>`<option value="${escapeHtml(c.name||c.business||'Customer')}">${escapeHtml(c.phone||c.email||'')}</option>`).join('');
+/* Paradise Lawn Care Operations Suite v3.16 - Customer-to-Invoice workflow */
+function chooseCustomerPropertyV316(customer) {
+  const properties = Array.isArray(customer?.properties) ? customer.properties.filter(p => p && (p.name || p.address)) : [];
+  if (properties.length <= 1) return properties[0] || null;
+  const choices = properties.map((property, index) => `${index + 1}. ${property.name || property.address || `Property ${index + 1}`}`).join("\n");
+  const answer = window.prompt(`Choose the property for this invoice:\n\n${choices}`, "1");
+  if (answer === null) return undefined;
+  const selectedIndex = Number.parseInt(answer, 10) - 1;
+  if (!Number.isInteger(selectedIndex) || !properties[selectedIndex]) {
+    alert("Please enter one of the property numbers shown.");
+    return undefined;
+  }
+  return properties[selectedIndex];
 }
-window.addEventListener('DOMContentLoaded',initializePhaseA);
 
+function createInvoiceFromCustomerV316() {
+  const name = byId("customerName")?.value.trim() || "";
+  const business = byId("customerBusiness")?.value.trim() || "";
+  if (!name && !business) {
+    alert("Enter a customer or business name first.");
+    return;
+  }
 
-/* v3.14 Phase B - Weather Command Center */
+  // Save the current form without requiring the user to press Save Customer first.
+  const customers = readArray(CUSTOMER_STORAGE_KEY);
+  const customerId = activeCustomerId || makeId("customer");
+  const existingIndex = customers.findIndex(customer => customer.id === customerId);
+  const previous = existingIndex >= 0 ? customers[existingIndex] : null;
+  const customer = {
+    id: customerId,
+    customerNumber: previous?.customerNumber || (typeof generateCustomerNumberV36 === "function" ? generateCustomerNumberV36() : ""),
+    name,
+    business,
+    phone: byId("customerPhone")?.value.trim() || "",
+    email: byId("customerEmail")?.value.trim() || "",
+    billing: byId("customerBilling")?.value.trim() || "",
+    notes: byId("customerNotes")?.value.trim() || "",
+    properties: collectProperties(),
+    billingMethod: byId("customerBillingMethod")?.value || previous?.billingMethod || "Per Service",
+    billingAnchor: byId("customerBillingAnchor")?.value || previous?.billingAnchor || getLocalDateString(),
+    createdAt: previous?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  if (existingIndex >= 0) customers[existingIndex] = customer; else customers.push(customer);
+  writeArray(CUSTOMER_STORAGE_KEY, customers);
+  activeCustomerId = customerId;
+  if (byId("customerId")) byId("customerId").value = customerId;
+  if (byId("customerNumberDisplay")) byId("customerNumberDisplay").textContent = customer.customerNumber || "Assigned";
+
+  const property = chooseCustomerPropertyV316(customer);
+  if (property === undefined) return;
+
+  activeInvoiceId = null;
+  pendingInvoiceCustomerId = customerId;
+  pendingInvoiceQuoteId = null;
+  clearInvoiceFields();
+  byId("jobNumber").value = typeof generateInvoiceNumberV36 === "function" ? generateInvoiceNumberV36() : generateJobNumber();
+  if (byId("invoiceJobId")) byId("invoiceJobId").value = typeof generateJobIdV36 === "function" ? generateJobIdV36() : "";
+  if (byId("invoiceCustomerNumber")) byId("invoiceCustomerNumber").value = customer.customerNumber || "";
+  byId("todayDate").value = getLocalDateString();
+  if (byId("dueDate") && !byId("dueDate").value) {
+    byId("dueDate").value = typeof addDaysStringV38 === "function" ? addDaysStringV38(getLocalDateString(), 14) : getLocalDateString();
+  }
+  byId("clientName").value = customer.name || "";
+  byId("businessName").value = customer.business || "";
+  byId("phone").value = customer.phone || "";
+  byId("email").value = customer.email || "";
+  byId("billingAddress").value = customer.billing || "";
+  byId("cityStateZip").value = property?.address || customer.billing || "";
+  byId("notes").value = customer.notes || "";
+  resetServiceRows([{date: getLocalDateString(), address: property?.address || customer.billing || "", service: "Full Service", amount: 0}]);
+  calculateTotals();
+  populateCustomerSelectors();
+  populateInvoiceLinkSelectors({customerId});
+  if (byId("invoiceCustomerLink")) byId("invoiceCustomerLink").value = customerId;
+
+  // Register the draft immediately so it appears in Invoice Finder and Customer History.
+  const invoice = collectInvoice();
+  invoice.customerId = customerId;
+  invoice.customerNumber = customer.customerNumber || "";
+  invoice.invoiceNumber = invoice.jobNumber;
+  invoice.jobId = byId("invoiceJobId")?.value || invoice.jobId || "";
+  invoice.status = invoice.status || "Unpaid";
+  const invoices = getSavedInvoices();
+  invoices.push(invoice);
+  storeInvoices(invoices);
+  activeInvoiceId = invoice.id;
+  showEditingBanner(invoice.jobNumber);
+  renderCustomerList();
+  renderInvoiceList();
+  renderCustomerInvoiceHistory();
+  if (typeof refreshHomeDashboard === "function") refreshHomeDashboard();
+  switchTab("invoiceTab");
+  window.scrollTo({top: 0, behavior: "smooth"});
+  alert(`Invoice ${invoice.jobNumber} was created and linked to ${customer.name || customer.business}.`);
+}
+
+/* v3.16 Complete - Weather Command Center */
 const WEATHER_DEFAULT = { name: "Stuart", lat: 27.1975, lon: -80.2528 };
 const WEATHER_BOUNDS = [[26.74, -80.58], [27.62, -79.92]];
 let weatherMap = null;
@@ -1735,131 +1779,26 @@ let radarFrameIndex = 0;
 let radarTimer = null;
 let weatherInitialized = false;
 let activeWeatherLocation = { ...WEATHER_DEFAULT };
-
 function cToF(value) { return value == null ? null : Math.round((Number(value) * 9 / 5) + 32); }
 function kphToMph(value) { return value == null ? null : Math.round(Number(value) * 0.621371); }
 function weatherText(id, value) { const el = byId(id); if (el) el.textContent = value; }
-
-function initializeWeatherMap() {
-  if (weatherMap || typeof L === "undefined" || !byId("weatherRadarMap")) return;
-  weatherMap = L.map("weatherRadarMap", { maxBounds: [[26.55,-81.0],[27.85,-79.55]], minZoom: 7 }).setView([27.18, -80.27], 9);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(weatherMap);
-  L.rectangle(WEATHER_BOUNDS, { color: "#2f7d32", weight: 2, fillOpacity: 0.03 }).addTo(weatherMap).bindTooltip("Paradise Lawn Care service area");
-  [["Fort Pierce",27.4467,-80.3256],["Port St. Lucie",27.2730,-80.3582],["Stuart",27.1975,-80.2528],["Hobe Sound",27.0595,-80.1364],["Jupiter",26.9342,-80.0942],["Palm Beach Gardens",26.8234,-80.1387]].forEach(([name,lat,lon]) => L.circleMarker([lat,lon],{radius:5,weight:2,fillOpacity:.8}).addTo(weatherMap).bindTooltip(name));
-  setTimeout(() => weatherMap.invalidateSize(), 100);
-}
-
-async function loadRadarFrames() {
-  if (!weatherMap) return;
-  try {
-    const response = await fetch("https://api.rainviewer.com/public/weather-maps.json", { cache: "no-store" });
-    if (!response.ok) throw new Error("Radar service unavailable");
-    const data = await response.json();
-    const past = data.radar?.past || [];
-    const nowcast = data.radar?.nowcast || [];
-    radarFrames = [...past.slice(-6), ...nowcast].map(frame => ({ ...frame, host: data.host }));
-    if (!radarFrames.length) throw new Error("No radar frames returned");
-    radarFrameIndex = Math.max(0, past.slice(-6).length - 1);
-    buildRadarLayers();
-    showRadarFrame(radarFrameIndex);
-    startRadarAnimation();
-  } catch (error) {
-    weatherText("radarTimeLabel", "Radar unavailable - check internet connection");
-    console.error(error);
-  }
-}
-
-function buildRadarLayers() {
-  if (!weatherMap) return;
-  radarLayers.forEach(layer => weatherMap.removeLayer(layer));
-  radarLayers = radarFrames.map(frame => {
-    const layer = L.tileLayer(`${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
-      opacity: 0,
-      zIndex: 500,
-      maxNativeZoom: 7,
-      maxZoom: 18,
-      updateWhenIdle: true,
-      keepBuffer: 2,
-      attribution: "Radar by RainViewer"
-    });
-    layer.addTo(weatherMap);
-    return layer;
-  });
-}
-
-function showRadarFrame(index) {
-  if (!weatherMap || !radarFrames.length) return;
-  if (radarLayers.length !== radarFrames.length) buildRadarLayers();
-  radarLayers.forEach((layer, layerIndex) => layer.setOpacity(layerIndex === index ? .72 : 0));
-  radarLayer = radarLayers[index] || null;
-  const frame = radarFrames[index];
-  weatherText("radarTimeLabel", new Date(frame.time * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
-}
+function initializeWeatherMap() { if (weatherMap || typeof L === "undefined" || !byId("weatherRadarMap")) return; weatherMap = L.map("weatherRadarMap", { maxBounds: [[26.55,-81.0],[27.85,-79.55]], minZoom: 7 }).setView([27.18, -80.27], 9); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(weatherMap); L.rectangle(WEATHER_BOUNDS, { color: "#2f7d32", weight: 2, fillOpacity: 0.03 }).addTo(weatherMap).bindTooltip("Paradise Lawn Care service area"); [["Fort Pierce",27.4467,-80.3256],["Port St. Lucie",27.2730,-80.3582],["Stuart",27.1975,-80.2528],["Hobe Sound",27.0595,-80.1364],["Jupiter",26.9342,-80.0942],["Palm Beach Gardens",26.8234,-80.1387]].forEach(([name,lat,lon]) => L.circleMarker([lat,lon],{radius:5,weight:2,fillOpacity:.8}).addTo(weatherMap).bindTooltip(name)); setTimeout(() => weatherMap.invalidateSize(), 100); }
+async function loadRadarFrames() { if (!weatherMap) return; try { const response = await fetch("https://api.rainviewer.com/public/weather-maps.json", { cache: "no-store" }); if (!response.ok) throw new Error("Radar service unavailable"); const data = await response.json(); const past = data.radar?.past || []; const nowcast = data.radar?.nowcast || []; radarFrames = [...past.slice(-6), ...nowcast].map(frame => ({ ...frame, host: data.host })); if (!radarFrames.length) throw new Error("No radar frames returned"); radarFrameIndex = Math.max(0, past.slice(-6).length - 1); buildRadarLayers(); showRadarFrame(radarFrameIndex); startRadarAnimation(); } catch (error) { weatherText("radarTimeLabel", "Radar unavailable - check internet connection"); console.error(error); } }
+function buildRadarLayers() { if (!weatherMap) return; radarLayers.forEach(layer => weatherMap.removeLayer(layer)); radarLayers = radarFrames.map(frame => { const layer = L.tileLayer(`${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: 0, zIndex: 500, maxNativeZoom: 7, maxZoom: 18, updateWhenIdle: true, keepBuffer: 2, attribution: "Radar by RainViewer" }); layer.addTo(weatherMap); return layer; }); }
+function showRadarFrame(index) { if (!weatherMap || !radarFrames.length) return; if (radarLayers.length !== radarFrames.length) buildRadarLayers(); radarLayers.forEach((layer, layerIndex) => layer.setOpacity(layerIndex === index ? .72 : 0)); radarLayer = radarLayers[index] || null; const frame = radarFrames[index]; weatherText("radarTimeLabel", new Date(frame.time * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); }
 function startRadarAnimation() { stopRadarAnimation(); radarTimer = setInterval(() => { radarFrameIndex = (radarFrameIndex + 1) % radarFrames.length; showRadarFrame(radarFrameIndex); }, 1200); weatherText("radarPlayButton", "Pause"); }
 function stopRadarAnimation() { if (radarTimer) clearInterval(radarTimer); radarTimer = null; weatherText("radarPlayButton", "Play"); }
 function toggleRadarAnimation() { radarTimer ? stopRadarAnimation() : startRadarAnimation(); }
 function resetWeatherMap() { if (weatherMap) weatherMap.fitBounds(WEATHER_BOUNDS, { padding: [18,18] }); }
-
 async function fetchJson(url) { const response = await fetch(url, { headers: { Accept: "application/geo+json, application/json" }, cache: "no-store" }); if (!response.ok) throw new Error(`Weather request failed (${response.status})`); return response.json(); }
-
-async function loadWeatherForLocation(location = activeWeatherLocation) {
-  activeWeatherLocation = location;
-  weatherText("weatherStatus", `Loading live weather for ${location.name}...`);
-  try {
-    const point = await fetchJson(`https://api.weather.gov/points/${location.lat.toFixed(4)},${location.lon.toFixed(4)}`);
-    const [forecast, stations, alerts] = await Promise.all([
-      fetchJson(point.properties.forecast),
-      fetchJson(point.properties.observationStations),
-      fetchJson("https://api.weather.gov/alerts/active?area=FL")
-    ]);
-    let observation = null;
-    const stationUrl = stations.features?.[0]?.id;
-    if (stationUrl) observation = await fetchJson(`${stationUrl}/observations/latest`);
-    renderWeather(location, forecast, observation, alerts);
-  } catch (error) {
-    weatherText("weatherStatus", `Unable to load live weather: ${error.message}. Verify the computer is online.`);
-    console.error(error);
-  }
-}
-
-function renderWeather(location, forecast, observation, alerts) {
-  const periods = forecast.properties?.periods || [];
-  const current = observation?.properties || {};
-  const temp = cToF(current.temperature?.value);
-  const wind = kphToMph(current.windSpeed?.value);
-  weatherText("weatherCurrentTemp", temp == null ? (periods[0] ? `${periods[0].temperature}°F` : "--") : `${temp}°F`);
-  weatherText("weatherCurrentText", current.textDescription || periods[0]?.shortForecast || "Current conditions");
-  weatherText("weatherRainChance", periods[0]?.probabilityOfPrecipitation?.value == null ? "--" : `${periods[0].probabilityOfPrecipitation.value}%`);
-  weatherText("weatherWind", wind == null ? (periods[0]?.windSpeed || "--") : `${wind} mph`);
-  weatherText("weatherWindDirection", current.windDirection?.value == null ? (periods[0]?.windDirection || location.name) : `${Math.round(current.windDirection.value)}°`);
-  const list = byId("weatherForecastList");
-  if (list) list.innerHTML = periods.slice(0, 8).map(p => `<article class="weather-period"><div><strong>${p.name}</strong><span>${p.temperature}°${p.temperatureUnit}</span></div><p>${p.shortForecast}</p><small>Rain ${p.probabilityOfPrecipitation?.value ?? 0}% · Wind ${p.windDirection} ${p.windSpeed}</small></article>`).join("");
-  const countyTerms = ["St. Lucie", "Saint Lucie", "Martin", "Northern Palm Beach", "Palm Beach"];
-  const relevant = (alerts.features || []).filter(item => countyTerms.some(term => `${item.properties.areaDesc} ${item.properties.headline}`.toLowerCase().includes(term.toLowerCase())));
-  weatherText("weatherAlertCount", String(relevant.length));
-  const homeSummary = byId("homeWeatherSummary");
-  if (homeSummary) {
-    const displayedTemp = temp == null ? (periods[0] ? `${periods[0].temperature}°F` : "--") : `${temp}°F`;
-    const rainChance = periods[0]?.probabilityOfPrecipitation?.value;
-    const windText = wind == null ? (periods[0]?.windSpeed || "--") : `${wind} mph`;
-    homeSummary.innerHTML = `<div class="home-weather-main"><strong>${displayedTemp}</strong><span>${escapeHtml(current.textDescription || periods[0]?.shortForecast || "Current conditions")}</span></div><div class="home-weather-details"><span><b>Rain:</b> ${rainChance == null ? "--" : `${rainChance}%`}</span><span><b>Wind:</b> ${escapeHtml(windText)}</span><span><b>Alerts:</b> ${relevant.length}</span></div><small>${escapeHtml(location.name)} · Updated ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</small>`;
-  }
-  const alertList = byId("weatherAlertsList");
-  if (alertList) alertList.innerHTML = relevant.length ? relevant.map(item => `<article class="weather-alert"><strong>${item.properties.event}</strong><span>${item.properties.areaDesc}</span><p>${item.properties.headline || item.properties.description || "Weather alert"}</p></article>`).join("") : '<p class="empty-message">No active alerts affecting the selected service area.</p>';
-  weatherText("weatherStatus", `Live weather loaded for ${location.name}. Updated ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}.`);
-}
-
+async function loadWeatherForLocation(location = activeWeatherLocation) { activeWeatherLocation = location; weatherText("weatherStatus", `Loading live weather for ${location.name}...`); try { const point = await fetchJson(`https://api.weather.gov/points/${location.lat.toFixed(4)},${location.lon.toFixed(4)}`); const [forecast, stations, alerts] = await Promise.all([fetchJson(point.properties.forecast),fetchJson(point.properties.observationStations),fetchJson("https://api.weather.gov/alerts/active?area=FL")]); let observation = null; const stationUrl = stations.features?.[0]?.id; if (stationUrl) observation = await fetchJson(`${stationUrl}/observations/latest`); renderWeather(location, forecast, observation, alerts); } catch (error) { weatherText("weatherStatus", `Unable to load live weather: ${error.message}. Verify the computer is online.`); console.error(error); } }
+function renderWeather(location, forecast, observation, alerts) { const periods = forecast.properties?.periods || []; const current = observation?.properties || {}; const temp = cToF(current.temperature?.value); const wind = kphToMph(current.windSpeed?.value); weatherText("weatherCurrentTemp", temp == null ? (periods[0] ? `${periods[0].temperature}°F` : "--") : `${temp}°F`); weatherText("weatherCurrentText", current.textDescription || periods[0]?.shortForecast || "Current conditions"); weatherText("weatherRainChance", periods[0]?.probabilityOfPrecipitation?.value == null ? "--" : `${periods[0].probabilityOfPrecipitation.value}%`); weatherText("weatherWind", wind == null ? (periods[0]?.windSpeed || "--") : `${wind} mph`); weatherText("weatherWindDirection", current.windDirection?.value == null ? (periods[0]?.windDirection || location.name) : `${Math.round(current.windDirection.value)}°`); const list = byId("weatherForecastList"); if (list) list.innerHTML = periods.slice(0, 8).map(p => `<article class="weather-period"><div><strong>${p.name}</strong><span>${p.temperature}°${p.temperatureUnit}</span></div><p>${p.shortForecast}</p><small>Rain ${p.probabilityOfPrecipitation?.value ?? 0}% · Wind ${p.windDirection} ${p.windSpeed}</small></article>`).join(""); const countyTerms = ["St. Lucie", "Saint Lucie", "Martin", "Northern Palm Beach", "Palm Beach"]; const relevant = (alerts.features || []).filter(item => countyTerms.some(term => `${item.properties.areaDesc} ${item.properties.headline}`.toLowerCase().includes(term.toLowerCase()))); weatherText("weatherAlertCount", String(relevant.length)); const homeSummary = byId("homeWeatherSummary"); if (homeSummary) { const displayedTemp = temp == null ? (periods[0] ? `${periods[0].temperature}°F` : "--") : `${temp}°F`; const rainChance = periods[0]?.probabilityOfPrecipitation?.value; const windText = wind == null ? (periods[0]?.windSpeed || "--") : `${wind} mph`; homeSummary.innerHTML = `<div class="home-weather-main"><strong>${displayedTemp}</strong><span>${escapeHtml(current.textDescription || periods[0]?.shortForecast || "Current conditions")}</span></div><div class="home-weather-details"><span><b>Rain:</b> ${rainChance == null ? "--" : `${rainChance}%`}</span><span><b>Wind:</b> ${escapeHtml(windText)}</span><span><b>Alerts:</b> ${relevant.length}</span></div><small>${escapeHtml(location.name)} · Updated ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</small>`; } const alertList = byId("weatherAlertsList"); if (alertList) alertList.innerHTML = relevant.length ? relevant.map(item => `<article class="weather-alert"><strong>${item.properties.event}</strong><span>${item.properties.areaDesc}</span><p>${item.properties.headline || item.properties.description || "Weather alert"}</p></article>`).join("") : '<p class="empty-message">No active alerts affecting the selected service area.</p>'; weatherText("weatherStatus", `Live weather loaded for ${location.name}. Updated ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}.`); }
 function selectWeatherLocation(name, lat, lon) { loadWeatherForLocation({ name, lat, lon }); if (weatherMap) weatherMap.setView([lat, lon], 10); }
 async function refreshWeatherCenter() { initializeWeatherMap(); await Promise.all([loadWeatherForLocation(activeWeatherLocation), loadRadarFrames()]); }
-function initializePhaseBWeather() {
-  loadWeatherForLocation(activeWeatherLocation);
-  document.querySelectorAll('[data-tab="weatherTab"]').forEach(button => button.addEventListener("click", () => {
-    setTimeout(() => { initializeWeatherMap(); if (weatherMap) weatherMap.invalidateSize(); if (!weatherInitialized) { weatherInitialized = true; loadRadarFrames(); } }, 60);
-  }));
-}
+function initializePhaseBWeather() { loadWeatherForLocation(activeWeatherLocation); document.querySelectorAll('[data-tab="weatherTab"]').forEach(button => button.addEventListener("click", () => { setTimeout(() => { initializeWeatherMap(); if (weatherMap) weatherMap.invalidateSize(); if (!weatherInitialized) { weatherInitialized = true; loadRadarFrames(); } }, 60); })); }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initializePhaseBWeather, { once: true }); else initializePhaseBWeather();
 
-/* Phase C v3.15 - Route and Schedule Center */
+/* v3.16 Complete - Route and Schedule Center */
 let phaseCRouteMap=null, phaseCRouteLayer=null, phaseCRouteMarkers=[];
 const PHASE_C_HOME_BASE={lat:27.1975,lon:-80.2528,name:"Paradise Lawn Care - Stuart"};
 function phaseCDateFromScheduleKey(key){return String(key||"").split("_")[0];}

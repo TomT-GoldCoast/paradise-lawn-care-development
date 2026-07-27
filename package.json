@@ -1,6 +1,6 @@
 {
   "name": "paradise-lawn-care-development",
-  "version": "3.14.1",
+  "version": "3.16.0",
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.js",
