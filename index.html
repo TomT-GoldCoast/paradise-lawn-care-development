@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paradise Lawn Care Operations Suite v3.16</title>
-  <link rel="stylesheet" href="style.css?v=3.16.0">
+  <title>Paradise Lawn Care Operations Suite v3.17</title>
+  <link rel="stylesheet" href="style.css?v=3.17.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
       <div class="brand-logo-wrap"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/logo.png" alt="Paradise Lawn Care Logo" class="logo"></div>
       <div class="company-info">
         <h1>Paradise Lawn Care, LLC</h1>
-        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.16 — Customer-to-Invoice Workflow</p>
+        <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.17 — Customer-to-Invoice Workflow</p>
         <p>📞 772-323-9401</p>
         <p>✉ ParadiseLawncare772@gmail.com</p>
         <p>📍 5685 SE Ault Ave., Suite 1<br>Stuart, FL 34997</p>
@@ -142,7 +142,26 @@
       <section id="quoteTab" class="tab-panel">
         <div class="module-heading"><div><h2>Quote Builder</h2><p>Create, save, search, and convert estimates into invoices.</p></div><div class="compact-actions"><button type="button" onclick="newQuote()">New Quote</button><button type="button" onclick="saveQuote()">Save Quote</button><button type="button" onclick="convertQuoteToInvoice()">Convert to Invoice</button></div></div>
         <div class="section row"><div><label>Quote Number</label><input id="quoteNumber" readonly></div><div><label>Quote Date</label><input id="quoteDate" type="date"></div><div><label>Valid Through</label><input id="quoteValidThrough" type="date"></div><div><label>Status</label><select id="quoteStatus"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select></div></div>
-        <div class="section"><h3>Customer & Property</h3><div class="row"><div><label>Customer</label><select id="quoteCustomer"></select></div><div><label>Property</label><select id="quoteProperty"></select></div></div><label>Scope of Work</label><textarea id="quoteScope" rows="4"></textarea><div class="row"><div><label>Estimated Amount</label><input id="quoteAmount" type="number" min="0" step="0.01"></div><div><label>Frequency</label><select id="quoteFrequency"><option>One Time</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Seasonal</option></select></div></div><label>Notes</label><textarea id="quoteNotes" rows="3"></textarea></div>
+        <div class="section quote-customer-section">
+          <h3>Customer &amp; Property</h3>
+          <input id="quoteCustomer" type="hidden">
+          <input id="quoteProperty" type="hidden">
+          <div class="quote-touch-selectors">
+            <button type="button" class="quote-touch-button" onclick="openQuoteCustomerPicker()"><span>Select Customer</span><strong id="quoteCustomerDisplay">Tap to choose a customer</strong></button>
+            <button type="button" class="quote-touch-button" onclick="openQuotePropertyPicker()"><span>Select Property</span><strong id="quotePropertyDisplay">Choose a customer first</strong></button>
+          </div>
+          <div class="row quote-contact-details">
+            <div><label>Service Address</label><input id="quoteAddress" placeholder="Property address"></div>
+            <div><label>Phone Number</label><input id="quotePhone" inputmode="tel" placeholder="(000) 000-0000"></div>
+          </div>
+          <div class="row quote-contact-details">
+            <div><label>Email</label><input id="quoteEmail" inputmode="email" placeholder="customer@example.com"></div>
+            <div><label>Preferred Contact Method</label><select id="quotePreferredContact" class="preferred-contact"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select></div>
+          </div>
+          <label>Scope of Work</label><textarea id="quoteScope" rows="4"></textarea>
+          <div class="row"><div><label>Estimated Amount</label><div class="currency-input"><span>$</span><input id="quoteAmount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div><div><label>Frequency</label><select id="quoteFrequency"><option>One Time</option><option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Seasonal</option></select></div></div>
+          <label>Notes</label><textarea id="quoteNotes" rows="3"></textarea>
+        </div>
 
         <div class="section attachment-section"><div class="module-heading"><div><h3>Quote Pictures</h3><p>Property pictures can remain with the quote and follow it when converted to an invoice.</p></div><span id="quoteAttachmentCount" class="attachment-count">0 files</span></div><label class="upload-button">Add Pictures<input id="quotePhotoInput" type="file" accept="image/*" multiple hidden></label><div id="quoteAttachmentGallery" class="attachment-gallery"><p class="empty-message">Save or select a quote to attach pictures.</p></div></div>
         <div class="section"><h3>Saved Quotes</h3><div id="quoteList" class="record-list"></div></div>
@@ -184,7 +203,7 @@
 
       <section id="customersTab" class="tab-panel">
         <div class="module-heading"><div><h2>Customers & Property Profiles</h2><p>Keep customer details, property instructions, and job-site information together.</p></div><button type="button" onclick="newCustomer()">New Customer</button></div>
-        <div class="split-layout"><section class="section"><h3>Customer Record</h3><input id="customerId" type="hidden"><div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div><div class="row"><div><label>Customer Name</label><input id="customerName"></div><div><label>Business Name</label><input id="customerBusiness"></div></div><div class="row"><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail"></div></div><label>Billing Address</label><input id="customerBilling"><div class="billing-settings"><h4>Billing Schedule</h4><div class="row"><div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div><div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div></div><p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p></div><label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea><div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" onclick="createInvoiceFromCustomerV316()">Create Invoice</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div></section><section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section></div>
+        <div class="split-layout"><section class="section"><h3>Customer Record</h3><input id="customerId" type="hidden"><div class="customer-id-banner"><span>Customer ID</span><strong id="customerNumberDisplay">Not assigned</strong></div><div class="row"><div><label>Customer Name</label><input id="customerName"></div><div><label>Business Name</label><input id="customerBusiness"></div></div><div class="row"><div><label>Phone</label><input id="customerPhone"></div><div><label>Email</label><input id="customerEmail"></div><div><label>Preferred Contact Method</label><select id="customerPreferredContact" class="preferred-contact"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select></div></div><label>Billing Address</label><input id="customerBilling"><div class="billing-settings"><h4>Billing Schedule</h4><div class="row"><div><label>Billing Method</label><select id="customerBillingMethod"><option value="Per Service">Per Service</option><option value="Bi-Weekly">Bi-Weekly</option><option value="Monthly">Monthly</option></select></div><div><label>Billing Day / Start Date</label><input id="customerBillingAnchor" type="date"></div></div><p id="customerBillingHelp" class="small-note">Per-service customers become ready to invoice whenever a scheduled job is completed.</p></div><label>Customer Notes</label><textarea id="customerNotes" rows="3"></textarea><div class="compact-actions"><button type="button" onclick="saveCustomer()">Save Customer</button><button type="button" onclick="createInvoiceFromCustomerV316()">Create Invoice</button><button type="button" class="secondary-button" onclick="deleteCurrentCustomer()">Delete</button></div></section><section class="section"><h3>Customer Finder</h3><input id="customerSearch" type="search" placeholder="Search customers, phone, address, notes"><div id="customerList" class="record-list"></div></section></div>
         <div class="section"><div class="module-heading"><div><h3>Property Profiles</h3><p>Store site-specific details employees need before arrival.</p></div><button type="button" onclick="addPropertyRow()">+ Add Property</button></div><div id="propertyRows"></div></div>
         <div class="section customer-invoice-section"><div class="module-heading"><div><h3>Customer Invoice History</h3><p>Search and open every invoice connected to the selected customer.</p></div><span id="customerInvoiceCount" class="attachment-count">0 invoices</span></div><input id="customerInvoiceSearch" type="search" placeholder="Search invoice number, date, address, amount, or status"><div id="customerInvoiceHistory" class="customer-invoice-history"><p class="empty-message">Select a customer to view invoice history.</p></div></div>
       </section>
@@ -332,7 +351,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="script.js?v=3.16.0"></script>
+  <script src="script.js?v=3.17.0"></script>
   <div class="yard-animation"><div class="grass-line"></div><div class="yard-worker mower">🚜</div><div class="yard-worker trimmer">🧍‍♂️🌿</div><div class="yard-worker blower">🧍‍♂️💨🍂</div></div>
 
   <div id="billingCenterModal" class="modal" hidden>

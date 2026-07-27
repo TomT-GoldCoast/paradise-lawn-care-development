@@ -670,3 +670,32 @@ button:focus-visible {
 /* v3.16 Complete - Route and Schedule Center */
 .route-center-panel{margin-bottom:18px}.route-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin:12px 0}.route-stat{background:var(--panel-soft,#f5f7f3);border:1px solid var(--border-color,#d8ded3);border-radius:10px;padding:12px}.route-stat span{display:block;font-size:.82rem;opacity:.75}.route-stat strong{display:block;font-size:1.25rem;margin-top:4px}.route-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:16px;align-items:start}.route-map{height:430px;border:1px solid var(--border-color,#d8ded3);border-radius:12px;overflow:hidden;background:#e9eee7}.route-stop-list{display:grid;gap:8px;max-height:430px;overflow:auto;margin-bottom:12px}.route-stop{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;border:1px solid var(--border-color,#d8ded3);border-radius:10px;padding:10px}.route-stop-number{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#2f6b3f;color:white;font-weight:700}.route-stop small,.route-stop span{display:block;opacity:.78}.route-stop-time{font-weight:700;white-space:nowrap}.command-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.command-metric{border:1px solid var(--border-color,#d8ded3);border-radius:9px;padding:9px}.command-metric strong{display:block;font-size:1.15rem}.command-alert{margin-top:10px;padding:9px;border-left:4px solid #c69023;background:rgba(198,144,35,.1)}
 @media(max-width:900px){.route-stat-grid{grid-template-columns:repeat(2,1fr)}.route-layout{grid-template-columns:1fr}.route-map{height:360px}}
+
+/* v3.17 touch property picker and preferred contact restoration */
+.property-picker-card{width:min(720px,94vw)}
+.property-picker-choices{display:grid;gap:12px;margin:18px 0}
+.property-choice{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;width:100%;min-height:78px;padding:15px 18px;border-radius:12px;background:#fff;color:#214f28;border:2px solid #b8d0ba;font-size:1rem}
+.property-choice strong{font-size:1.08rem}.property-choice span{margin-top:5px;color:#5f6d62;font-weight:500}
+.property-choice:hover,.property-choice:focus-visible{background:#edf7ed;border-color:#2f7d32;color:#214f28}
+.select-all-property{background:#214f28;color:#fff;border-color:#214f28}
+.select-all-property span{color:#e8f3e9}.select-all-property:hover,.select-all-property:focus-visible{background:#2f6b3f;color:#fff}
+.property-picker-footer{justify-content:flex-end}
+.preferred-contact{min-height:42px}
+@media(max-width:600px){.property-choice{min-height:86px;font-size:1.04rem}.property-picker-card{padding:16px}}
+
+/* v3.18 complete touch quote workflow */
+.quote-touch-selectors{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.quote-touch-button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;min-height:82px;padding:15px 18px;border:2px solid #b8d0ba;border-radius:12px;background:#fff;color:#214f28}
+.quote-touch-button span{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#68766b}
+.quote-touch-button strong{margin-top:5px;font-size:1.05rem}
+.quote-touch-button:hover,.quote-touch-button:focus-visible{background:#edf7ed;border-color:#2f7d32;color:#214f28}
+.quote-contact-details>div:first-child{flex:1.5}
+.currency-input{display:flex;align-items:center;border:1px solid #b9c9ba;border-radius:7px;background:#fff;overflow:hidden}
+.currency-input span{padding:0 0 0 12px;font-weight:800;color:#245f27;font-size:1.05rem}
+.currency-input input{border:0!important;box-shadow:none!important;margin:0!important;width:100%}
+.quote-picker-card{width:min(780px,94vw);max-height:88vh;overflow:auto}
+.quote-picker-list{display:grid;gap:10px;margin:16px 0}
+.quote-picker-choice{width:100%;min-height:72px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;padding:13px 16px;border:2px solid #bfd3c1;border-radius:11px;background:#fff;color:#214f28}
+.quote-picker-choice strong{font-size:1.04rem}.quote-picker-choice span{margin-top:4px;color:#647068;font-weight:500}
+.quote-picker-choice:hover,.quote-picker-choice:focus-visible{background:#edf7ed;border-color:#2f7d32;color:#214f28}
+@media(max-width:700px){.quote-touch-selectors{grid-template-columns:1fr}.quote-contact-details{grid-template-columns:1fr}.quote-touch-button{min-height:88px}}

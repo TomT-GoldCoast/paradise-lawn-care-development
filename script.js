@@ -863,6 +863,7 @@ function formatDateLong(value) { return value ? new Date(`${value}T00:00:00`).to
 function blankCustomerForm() {
   activeCustomerId = null;
   ["customerId","customerName","customerBusiness","customerPhone","customerEmail","customerBilling","customerNotes"].forEach(id => { if(byId(id)) byId(id).value=""; });
+  if (byId("customerPreferredContact")) byId("customerPreferredContact").value = "Phone";
   if (byId("propertyRows")) byId("propertyRows").innerHTML = "";
   addPropertyRow();
 }
@@ -883,11 +884,11 @@ function saveCustomer(){
   const name=byId("customerName").value.trim(), business=byId("customerBusiness").value.trim();
   if(!name&&!business){alert("Enter a customer or business name.");return;}
   const list=readArray(CUSTOMER_STORAGE_KEY); const id=activeCustomerId||makeId("customer");
-  const item={id,name,business,phone:byId("customerPhone").value.trim(),email:byId("customerEmail").value.trim(),billing:byId("customerBilling").value.trim(),notes:byId("customerNotes").value.trim(),properties:collectProperties(),updatedAt:new Date().toISOString()};
+  const item={id,name,business,phone:byId("customerPhone").value.trim(),email:byId("customerEmail").value.trim(),preferredContact:byId("customerPreferredContact")?.value||"Phone",billing:byId("customerBilling").value.trim(),notes:byId("customerNotes").value.trim(),properties:collectProperties(),updatedAt:new Date().toISOString()};
   const i=list.findIndex(x=>x.id===id); if(i>=0){item.createdAt=list[i].createdAt;list[i]=item;} else {item.createdAt=new Date().toISOString();list.push(item);} writeArray(CUSTOMER_STORAGE_KEY,list); activeCustomerId=id; renderCustomerList(); populateCustomerSelectors(); alert("Customer saved.");
 }
 function renderCustomerList(){ const host=byId("customerList"); if(!host)return; const q=(byId("customerSearch")?.value||"").toLowerCase(); const list=readArray(CUSTOMER_STORAGE_KEY).filter(c=>JSON.stringify(c).toLowerCase().includes(q)); host.innerHTML=list.length?list.map(c=>`<button type="button" class="record-card" onclick="loadCustomer('${c.id}')"><strong>${escapeHtml(c.name||c.business)}</strong><span>${escapeHtml(c.phone||c.email||"No contact entered")}</span><small>${c.properties?.length||0} propert${(c.properties?.length||0)===1?"y":"ies"}</small></button>`).join(""):'<p class="empty-message">No customers saved.</p>'; }
-function loadCustomer(id){ const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===id); if(!c)return; activeCustomerId=id; byId("customerId").value=id; byId("customerName").value=c.name||"";byId("customerBusiness").value=c.business||"";byId("customerPhone").value=c.phone||"";byId("customerEmail").value=c.email||"";byId("customerBilling").value=c.billing||"";byId("customerNotes").value=c.notes||"";byId("propertyRows").innerHTML="";(c.properties?.length?c.properties:[{}]).forEach(addPropertyRow); renderCustomerInvoiceHistory(); }
+function loadCustomer(id){ const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===id); if(!c)return; activeCustomerId=id; byId("customerId").value=id; byId("customerName").value=c.name||"";byId("customerBusiness").value=c.business||"";byId("customerPhone").value=c.phone||"";byId("customerEmail").value=c.email||"";if(byId("customerPreferredContact"))byId("customerPreferredContact").value=c.preferredContact||"Phone";byId("customerBilling").value=c.billing||"";byId("customerNotes").value=c.notes||"";byId("propertyRows").innerHTML="";(c.properties?.length?c.properties:[{}]).forEach(addPropertyRow); renderCustomerInvoiceHistory(); }
 function deleteCurrentCustomer(){ if(!activeCustomerId)return; if(!confirm("Delete this customer and property records?"))return; writeArray(CUSTOMER_STORAGE_KEY,readArray(CUSTOMER_STORAGE_KEY).filter(c=>c.id!==activeCustomerId)); blankCustomerForm();renderCustomerList();populateCustomerSelectors();populateInvoiceLinkSelectors(); }
 function populateCustomerSelectors(){ const list=readArray(CUSTOMER_STORAGE_KEY); const options='<option value="">Select customer</option>'+list.map(c=>`<option value="${c.id}">${escapeHtml(c.name||c.business)}</option>`).join(""); ["quoteCustomer"].forEach(id=>{const el=byId(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}}); }
 function populateQuoteProperties(){ const c=readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===byId("quoteCustomer").value); byId("quoteProperty").innerHTML='<option value="">Select property</option>'+(c?.properties||[]).map((p,i)=>`<option value="${i}">${escapeHtml(p.name||p.address||`Property ${i+1}`)}</option>`).join(""); }
@@ -1671,22 +1672,47 @@ function initializeV39(){byId("homeJobQuickViewModal")?.addEventListener("click"
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(initializeV39,40),{once:true});else setTimeout(initializeV39,40);
 
 
-/* Paradise Lawn Care Operations Suite v3.16 - Customer-to-Invoice workflow */
-function chooseCustomerPropertyV316(customer) {
+/* Paradise Lawn Care Operations Suite v3.17 - Touch property selection and preferred contact */
+function chooseCustomerPropertiesV317(customer) {
   const properties = Array.isArray(customer?.properties) ? customer.properties.filter(p => p && (p.name || p.address)) : [];
-  if (properties.length <= 1) return properties[0] || null;
-  const choices = properties.map((property, index) => `${index + 1}. ${property.name || property.address || `Property ${index + 1}`}`).join("\n");
-  const answer = window.prompt(`Choose the property for this invoice:\n\n${choices}`, "1");
-  if (answer === null) return undefined;
-  const selectedIndex = Number.parseInt(answer, 10) - 1;
-  if (!Number.isInteger(selectedIndex) || !properties[selectedIndex]) {
-    alert("Please enter one of the property numbers shown.");
-    return undefined;
-  }
-  return properties[selectedIndex];
+  if (properties.length <= 1) return Promise.resolve(properties);
+
+  return new Promise(resolve => {
+    let modal = byId("customerPropertyPickerModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "customerPropertyPickerModal";
+      modal.className = "modal property-picker-modal";
+      modal.hidden = true;
+      modal.innerHTML = `<div class="modal-card property-picker-card" role="dialog" aria-modal="true" aria-labelledby="propertyPickerTitle">
+        <div class="modal-header"><div><h2 id="propertyPickerTitle">Choose Property</h2><p>Tap one property, or select all properties.</p></div><button type="button" class="close-button" data-property-cancel>×</button></div>
+        <div id="propertyPickerChoices" class="property-picker-choices"></div>
+        <div class="compact-actions property-picker-footer"><button type="button" class="secondary-button" data-property-cancel>Cancel</button></div>
+      </div>`;
+      document.body.appendChild(modal);
+    }
+
+    const choices = byId("propertyPickerChoices");
+    choices.innerHTML = `<button type="button" class="property-choice select-all-property" data-property-index="all"><strong>Select All Properties</strong><span>Create one invoice with a service line for every property.</span></button>` + properties.map((property,index)=>`<button type="button" class="property-choice" data-property-index="${index}"><strong>${escapeHtml(property.name||`Property ${index+1}`)}</strong><span>${escapeHtml(property.address||"No address entered")}</span></button>`).join("");
+
+    const finish = value => {
+      modal.hidden = true;
+      modal.onclick = null;
+      resolve(value);
+    };
+    modal.onclick = event => {
+      const choice = event.target.closest("[data-property-index]");
+      if (choice) {
+        finish(choice.dataset.propertyIndex === "all" ? properties : [properties[Number(choice.dataset.propertyIndex)]]);
+        return;
+      }
+      if (event.target.closest("[data-property-cancel]") || event.target === modal) finish(undefined);
+    };
+    modal.hidden = false;
+  });
 }
 
-function createInvoiceFromCustomerV316() {
+async function createInvoiceFromCustomerV316() {
   const name = byId("customerName")?.value.trim() || "";
   const business = byId("customerBusiness")?.value.trim() || "";
   if (!name && !business) {
@@ -1706,6 +1732,7 @@ function createInvoiceFromCustomerV316() {
     business,
     phone: byId("customerPhone")?.value.trim() || "",
     email: byId("customerEmail")?.value.trim() || "",
+    preferredContact: byId("customerPreferredContact")?.value || previous?.preferredContact || "Phone",
     billing: byId("customerBilling")?.value.trim() || "",
     notes: byId("customerNotes")?.value.trim() || "",
     properties: collectProperties(),
@@ -1720,8 +1747,9 @@ function createInvoiceFromCustomerV316() {
   if (byId("customerId")) byId("customerId").value = customerId;
   if (byId("customerNumberDisplay")) byId("customerNumberDisplay").textContent = customer.customerNumber || "Assigned";
 
-  const property = chooseCustomerPropertyV316(customer);
-  if (property === undefined) return;
+  const selectedProperties = await chooseCustomerPropertiesV317(customer);
+  if (selectedProperties === undefined) return;
+  const propertiesForInvoice = selectedProperties.length ? selectedProperties : [{address: customer.billing || "", name: "Billing Address"}];
 
   activeInvoiceId = null;
   pendingInvoiceCustomerId = customerId;
@@ -1739,9 +1767,9 @@ function createInvoiceFromCustomerV316() {
   byId("phone").value = customer.phone || "";
   byId("email").value = customer.email || "";
   byId("billingAddress").value = customer.billing || "";
-  byId("cityStateZip").value = property?.address || customer.billing || "";
+  byId("cityStateZip").value = propertiesForInvoice[0]?.address || customer.billing || "";
   byId("notes").value = customer.notes || "";
-  resetServiceRows([{date: getLocalDateString(), address: property?.address || customer.billing || "", service: "Full Service", amount: 0}]);
+  resetServiceRows(propertiesForInvoice.map(property => ({date: getLocalDateString(), address: property?.address || customer.billing || "", service: "Full Service", amount: 0})));
   calculateTotals();
   populateCustomerSelectors();
   populateInvoiceLinkSelectors({customerId});
@@ -1824,3 +1852,63 @@ function renderPhaseCCommandCenter(){const host=byId('homeCommandCenter');if(!ho
 const phaseCRefreshHome=refreshHomeDashboard;refreshHomeDashboard=function(){phaseCRefreshHome();renderPhaseCCommandCenter();};
 function initializePhaseC(){renderPhaseCCommandCenter();document.querySelectorAll('[data-tab="scheduleTab"]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{phaseCInitMap();renderPhaseCCommandCenter();},60)));}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initializePhaseC,{once:true});else initializePhaseC();
+
+/* Paradise Lawn Care Operations Suite v3.18 - Complete touch quote workflow */
+function quoteCustomersV318(){return readArray(CUSTOMER_STORAGE_KEY);}
+function quoteSelectedCustomerV318(){return quoteCustomersV318().find(c=>c.id===byId("quoteCustomer")?.value)||null;}
+function quoteSelectedPropertyV318(){const c=quoteSelectedCustomerV318(),i=Number(byId("quoteProperty")?.value);return Number.isInteger(i)&&i>=0?c?.properties?.[i]||null:null;}
+function setQuoteCustomerDisplayV318(customer){if(byId("quoteCustomerDisplay"))byId("quoteCustomerDisplay").textContent=customer?(customer.name||customer.business||"Selected customer"):"Tap to choose a customer";}
+function setQuotePropertyDisplayV318(property){if(byId("quotePropertyDisplay"))byId("quotePropertyDisplay").textContent=property?(property.name||property.address||"Selected property"):(quoteSelectedCustomerV318()?"Tap to choose a property":"Choose a customer first");}
+function fillQuoteCustomerDetailsV318(customer,property){
+  if(byId("quotePhone"))byId("quotePhone").value=customer?.phone||"";
+  if(byId("quoteEmail"))byId("quoteEmail").value=customer?.email||"";
+  if(byId("quotePreferredContact"))byId("quotePreferredContact").value=customer?.preferredContact||"Phone";
+  if(byId("quoteAddress"))byId("quoteAddress").value=property?.address||customer?.billing||"";
+}
+function closeQuotePickerV318(){const m=byId("quoteTouchPickerModal");if(m)m.hidden=true;}
+function ensureQuotePickerV318(){
+  let modal=byId("quoteTouchPickerModal");
+  if(modal)return modal;
+  modal=document.createElement("div");modal.id="quoteTouchPickerModal";modal.className="modal";modal.hidden=true;
+  modal.innerHTML=`<div class="modal-card quote-picker-card" role="dialog" aria-modal="true"><div class="modal-header"><div><h2 id="quotePickerTitle">Select</h2><p id="quotePickerHelp">Tap one choice.</p></div><button type="button" class="close-button" onclick="closeQuotePickerV318()">×</button></div><div id="quotePickerList" class="quote-picker-list"></div><div class="compact-actions"><button type="button" class="secondary-button" onclick="closeQuotePickerV318()">Cancel</button></div></div>`;
+  modal.addEventListener("click",e=>{if(e.target===modal)closeQuotePickerV318();});document.body.appendChild(modal);return modal;
+}
+function openQuoteCustomerPicker(){
+  const customers=quoteCustomersV318(),modal=ensureQuotePickerV318();
+  byId("quotePickerTitle").textContent="Select Customer";byId("quotePickerHelp").textContent="Tap the customer for this quote.";
+  byId("quotePickerList").innerHTML=customers.length?customers.map(c=>`<button type="button" class="quote-picker-choice" onclick="selectQuoteCustomerV318('${c.id}')"><strong>${escapeHtml(c.name||c.business||'Customer')}</strong><span>${escapeHtml(c.phone||c.email||c.billing||'No contact information')}</span></button>`).join(""):'<p class="empty-message">No customers are saved. Create the customer on the Customers page first.</p>';
+  modal.hidden=false;
+}
+function selectQuoteCustomerV318(id){
+  const c=quoteCustomersV318().find(x=>x.id===id);if(!c)return;
+  byId("quoteCustomer").value=id;byId("quoteProperty").value="";setQuoteCustomerDisplayV318(c);setQuotePropertyDisplayV318(null);fillQuoteCustomerDetailsV318(c,null);closeQuotePickerV318();
+  const properties=(c.properties||[]).filter(p=>p&&(p.name||p.address));if(properties.length===1)selectQuotePropertyV318(0);else if(properties.length>1)openQuotePropertyPicker();
+}
+function openQuotePropertyPicker(){
+  const c=quoteSelectedCustomerV318();if(!c){openQuoteCustomerPicker();return;}
+  const properties=(c.properties||[]).filter(p=>p&&(p.name||p.address)),modal=ensureQuotePickerV318();
+  byId("quotePickerTitle").textContent="Select Property";byId("quotePickerHelp").textContent="Tap the property for this quote.";
+  byId("quotePickerList").innerHTML=properties.length?properties.map((p,i)=>`<button type="button" class="quote-picker-choice" onclick="selectQuotePropertyV318(${i})"><strong>${escapeHtml(p.name||`Property ${i+1}`)}</strong><span>${escapeHtml(p.address||'No address entered')}</span></button>`).join(""):'<button type="button" class="quote-picker-choice" onclick="selectQuotePropertyV318(-1)"><strong>Use Billing Address</strong><span>'+escapeHtml(c.billing||'No billing address entered')+'</span></button>';
+  modal.hidden=false;
+}
+function selectQuotePropertyV318(index){
+  const c=quoteSelectedCustomerV318(),p=index>=0?c?.properties?.[index]||null:null;byId("quoteProperty").value=index>=0?String(index):"";setQuotePropertyDisplayV318(p||{name:"Billing Address",address:c?.billing||""});fillQuoteCustomerDetailsV318(c,p);closeQuotePickerV318();
+}
+function populateCustomerSelectors(){setQuoteCustomerDisplayV318(quoteSelectedCustomerV318());setQuotePropertyDisplayV318(quoteSelectedPropertyV318());}
+function populateQuoteProperties(){setQuotePropertyDisplayV318(quoteSelectedPropertyV318());}
+function normalizeQuoteMoneyV318(){const el=byId("quoteAmount");if(!el)return 0;const n=cleanMoney(el.value);el.value=n?Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"";return n;}
+function newQuote(){
+  activeQuoteId=null;byId("quoteNumber").value=generateJobNumber();byId("quoteDate").value=getLocalDateString();byId("quoteValidThrough").value=getLocalDateString(addDays(new Date(),30));byId("quoteStatus").value="Draft";
+  ["quoteCustomer","quoteProperty","quoteAddress","quotePhone","quoteEmail","quoteScope","quoteAmount","quoteNotes"].forEach(id=>{if(byId(id))byId(id).value="";});if(byId("quotePreferredContact"))byId("quotePreferredContact").value="Phone";setQuoteCustomerDisplayV318(null);setQuotePropertyDisplayV318(null);renderQuotes();
+}
+function saveQuote(){
+  const c=quoteSelectedCustomerV318();if(!c){alert("Select a customer.");return;}const amount=normalizeQuoteMoneyV318(),list=readArray(QUOTE_STORAGE_KEY),id=activeQuoteId||makeId("quote"),p=quoteSelectedPropertyV318()||{name:"Service Address",address:byId("quoteAddress")?.value.trim()||c.billing||""};
+  const item={id,number:byId("quoteNumber").value,date:byId("quoteDate").value,validThrough:byId("quoteValidThrough").value,status:byId("quoteStatus").value,customerId:c.id,customerName:c.name||c.business||"Customer",property:{...p,address:byId("quoteAddress")?.value.trim()||p.address||""},phone:byId("quotePhone")?.value.trim()||c.phone||"",email:byId("quoteEmail")?.value.trim()||c.email||"",preferredContact:byId("quotePreferredContact")?.value||c.preferredContact||"Phone",scope:byId("quoteScope").value.trim(),amount,frequency:byId("quoteFrequency").value,notes:byId("quoteNotes").value.trim()};
+  const i=list.findIndex(x=>x.id===id);if(i>=0)list[i]=item;else list.push(item);writeArray(QUOTE_STORAGE_KEY,list);activeQuoteId=id;renderQuotes();alert("Quote saved.");
+}
+function loadQuote(id){
+  const q=readArray(QUOTE_STORAGE_KEY).find(x=>x.id===id);if(!q)return;activeQuoteId=id;byId("quoteNumber").value=q.number||"";byId("quoteDate").value=q.date||"";byId("quoteValidThrough").value=q.validThrough||"";byId("quoteStatus").value=q.status||"Draft";byId("quoteCustomer").value=q.customerId||"";
+  const c=quoteSelectedCustomerV318(),pi=c?.properties?.findIndex(p=>p.address===q.property?.address);byId("quoteProperty").value=pi>=0?String(pi):"";setQuoteCustomerDisplayV318(c);setQuotePropertyDisplayV318(pi>=0?c.properties[pi]:q.property);byId("quoteAddress").value=q.property?.address||c?.billing||"";byId("quotePhone").value=q.phone||c?.phone||"";byId("quoteEmail").value=q.email||c?.email||"";byId("quotePreferredContact").value=q.preferredContact||c?.preferredContact||"Phone";byId("quoteScope").value=q.scope||"";byId("quoteAmount").value=q.amount?Number(q.amount).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"";byId("quoteFrequency").value=q.frequency||"One Time";byId("quoteNotes").value=q.notes||"";renderQuoteAttachments();
+}
+function initializeQuoteV318(){const a=byId("quoteAmount");if(a){a.addEventListener("blur",normalizeQuoteMoneyV318);a.addEventListener("input",()=>{a.value=a.value.replace(/[^0-9.,]/g,"");});}populateCustomerSelectors();}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initializeQuoteV318,{once:true});else initializeQuoteV318();

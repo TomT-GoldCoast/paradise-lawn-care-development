@@ -1,9 +1,0 @@
-Paradise Lawn Care Operations Suite v3.10
-
-Correction tested:
-- Invoice service dropdown contains Select, Full Service, Hedge Trim, Debris Removal, and Land Clearing only.
-- Removed Mow, Weed Eat, Edge, and Blow as standalone invoice choices.
-- Legacy saved values Mow, Weed Eat, Edge, and Blow normalize to Full Service when loaded.
-- Demo invoice records use the corrected service list.
-- JavaScript syntax validation passed.
-- ZIP archive integrity validation passed.
