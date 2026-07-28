@@ -167,7 +167,24 @@ const PreferredContactComponent = (() => {
       button.addEventListener("click", (event) => {
         const activatedButton = event.currentTarget;
         const preferredContact = setValue(select, activatedButton.dataset.value, { emit: true });
-        if (preferredContact === "Smoke Signal") openSmokeSignal(activatedButton);
+
+        if (preferredContact === "Smoke Signal") {
+          openSmokeSignal(activatedButton);
+          return;
+        }
+
+        if (preferredContact === "Email") {
+          if (select.id === "invoicePreferredContact") emailInvoice();
+          else if (select.id === "quotePreferredContact") emailQuote();
+          else if (select.id === "customerPreferredContact") emailCustomer();
+          return;
+        }
+
+        if (preferredContact === "Text") {
+          if (select.id === "invoicePreferredContact") textInvoice();
+          else if (select.id === "quotePreferredContact") textQuote();
+          else if (select.id === "customerPreferredContact") textCustomer();
+        }
       });
       button.addEventListener("keydown", (event) => {
         const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];

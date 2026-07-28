@@ -1,0 +1,28 @@
+--- /mnt/data/Paradise_Lawn_Care_v3.19_exact_banner/script.js	2026-07-28 18:43:52.903431253 +0000
++++ /mnt/data/Paradise_Lawn_Care_v3.19_email_text_one_click_only/script.js	2026-07-28 19:59:26.855272406 +0000
+@@ -167,7 +167,24 @@
+       button.addEventListener("click", (event) => {
+         const activatedButton = event.currentTarget;
+         const preferredContact = setValue(select, activatedButton.dataset.value, { emit: true });
+-        if (preferredContact === "Smoke Signal") openSmokeSignal(activatedButton);
++
++        if (preferredContact === "Smoke Signal") {
++          openSmokeSignal(activatedButton);
++          return;
++        }
++
++        if (preferredContact === "Email") {
++          if (select.id === "invoicePreferredContact") emailInvoice();
++          else if (select.id === "quotePreferredContact") emailQuote();
++          else if (select.id === "customerPreferredContact") emailCustomer();
++          return;
++        }
++
++        if (preferredContact === "Text") {
++          if (select.id === "invoicePreferredContact") textInvoice();
++          else if (select.id === "quotePreferredContact") textQuote();
++          else if (select.id === "customerPreferredContact") textCustomer();
++        }
+       });
+       button.addEventListener("keydown", (event) => {
+         const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
