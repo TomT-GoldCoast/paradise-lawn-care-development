@@ -22,6 +22,21 @@ Version 3.19 includes:
 - Full-screen Smoke Signal controller using the official YouTube IFrame API
 - Two-play handling, manual Play fallback, Escape/manual close, API/offline
   handling, duplicate-overlay prevention, and interface-state restoration
+- Explicit one-click individual Text and Email actions on Invoice, Quote,
+  Customer, Scheduling, and Communication Center screens, with validation for
+  missing recipient details
+- Repository-local approved logo and grass artwork in the application header,
+  invoice PDF preview, browser print, and Save as PDF output
+- Repository-local Leaflet 1.9.4 assets, hidden-tab map resizing, radar
+  diagnostics, visible refresh/retry, and graceful provider/tile failure states
+- One-click Scheduling job details with linked customer, property, access,
+  service, contact, map, and route actions
+- Current-location-aware route starts requested only when Build/Refresh Route
+  is selected, plus manual, saved-preference, and business-location fallbacks
+- Numbered route pins synchronized with the stop list; locked, appointment,
+  manual-order, completed, and canceled schedule state preserved
+- Cached address lookup and straight-line mileage/time fallback when the
+  external driving-route service is unavailable
 - Existing dashboards, invoices, quotes, customers, scheduling, routing,
   weather/radar, employees, payroll, maintenance, expenses, inventory, alerts,
   PDF preview, attachments, demo records, and localStorage keys retained
@@ -36,4 +51,6 @@ Development checks:
 Production note:
 Do not clear browser site data without a backup. Customer, quote, invoice,
 schedule, maintenance, expense, inventory, payroll, and alert data remain local
-to the browser profile.
+to the browser profile. Browser location is requested once only for an
+intentional route build/refresh and is not stored unless the user explicitly
+selects Remember for a manually entered starting address.
