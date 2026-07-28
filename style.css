@@ -1272,3 +1272,122 @@ body.smoke-signal-active {
     height: 100px;
   }
 }
+
+
+/* v3.19.3 targeted header artwork and scheduling-card repairs */
+.header {
+  min-height: 220px;
+}
+.brand-logo-wrap {
+  flex: 0 0 330px;
+  min-width: 300px;
+  max-width: 350px;
+  align-self: stretch;
+}
+.brand-logo-wrap .logo {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 205px;
+  object-fit: contain;
+}
+.header .grass {
+  flex: 0 0 285px;
+  min-width: 250px;
+  align-self: stretch;
+  overflow: hidden;
+}
+.header .grass img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  object-fit: cover;
+  object-position: center bottom;
+}
+.schedule-main-row {
+  grid-template-columns: 54px 38px minmax(150px,1fr) 38px 38px;
+}
+.job-number-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+.sched-job-number {
+  display: block;
+  overflow: hidden;
+  color: #245f27;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sched-customer-name {
+  display: block;
+  overflow: hidden;
+  color: #56645a;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.schedule-map-button,
+.schedule-delete-button {
+  min-width: 38px;
+  min-height: 38px;
+  margin: 0;
+  padding: 5px;
+  font-size: 17px;
+}
+.schedule-map-button {
+  background: #3978a8;
+}
+.schedule-delete-button {
+  background: #a92828;
+  font-size: 23px;
+  line-height: 1;
+}
+@media (max-width: 800px) {
+  .header { min-height: 0; }
+  .brand-logo-wrap { flex-basis: auto; min-width: 0; width: 100%; max-width: 340px; }
+  .brand-logo-wrap .logo { height: 190px; min-height: 0; }
+  .header .grass { flex-basis: auto; min-width: 0; width: 100%; height: 175px; }
+}
+
+/* v3.19 exact banner header — header only */
+.header.paradise-banner-header {
+  display: block;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  margin-bottom: 14px;
+  overflow: hidden;
+  border-bottom: 4px solid #2f7d32;
+  background: #fff;
+}
+.paradise-header-banner {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  object-fit: contain;
+}
+.pdf-branding.pdf-banner-branding {
+  display: block !important;
+  padding: 0 0 12px !important;
+  border-bottom: 3px solid #2f7d32 !important;
+}
+.pdf-header-banner {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  object-fit: contain !important;
+}
+@media (max-width: 700px) {
+  .header.paradise-banner-header { min-height: 0; }
+  .paradise-header-banner { width: 100%; height: auto; }
+}
+@media print {
+  .pdf-header-banner { width: 100% !important; height: auto !important; }
+}

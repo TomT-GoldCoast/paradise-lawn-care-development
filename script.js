@@ -984,21 +984,25 @@ function updateInvoicePreferredContactActions(value = PreferredContactComponent.
   textAction?.classList.toggle("is-preferred-action", preferred === "Text");
 }
 
+
+function ensureParadiseBrandingLayoutV319() {
+  /* Header sizing is controlled by style.css. No runtime layout overrides are required. */
+}
+
 function viewInvoicePdf() {
   const invoice = collectInvoice();
   const customer = [invoice.clientName, invoice.businessName].filter(Boolean).join(" / ") || "—";
   const rows = invoice.services.length ? invoice.services.map((service) => `
     <tr><td>${escapeHtml(formatDisplayDate(service.date))}</td><td>${escapeHtml(service.address)}</td><td>${escapeHtml(service.service)}</td><td>${formatMoney(service.amount)}</td></tr>`).join("") : '<tr><td colspan="4">No services entered.</td></tr>';
+  ensureParadiseBrandingLayoutV319();
   byId("pdfPreview").innerHTML = `
-    <div class="pdf-branding">
-      <img class="pdf-logo" src="images/paradise-logo.svg" alt="Paradise Lawn Care, LLC logo">
-      <div class="pdf-company"><h1>Paradise Lawn Care, LLC</h1><strong>We Make Your Lawn Paradise Perfect.</strong><p>772-323-9401 · ParadiseLawncare772@gmail.com<br>5685 SE Ault Ave., Suite 1, Stuart, FL 34997</p></div>
+    <div class="pdf-branding pdf-banner-branding">
+      <img class="pdf-header-banner" src="images/paradise-header-banner.png" alt="Paradise Lawn Care, LLC">
     </div>
     <div class="pdf-meta"><div><strong>Invoice:</strong> ${escapeHtml(invoice.jobNumber)}<br><strong>Invoice Date:</strong> ${escapeHtml(formatDisplayDate(invoice.invoiceDate))}<br><strong>Due Date:</strong> ${escapeHtml(formatDisplayDate(invoice.dueDate))}</div><div><strong>Bill To:</strong><br>${escapeHtml(customer)}<br>${escapeHtml(invoice.billingAddress)}<br>${escapeHtml(invoice.cityStateZip)}<br>${escapeHtml(invoice.phone)}<br>${escapeHtml(invoice.email)}<br><strong>Preferred Contact:</strong> ${escapeHtml(invoice.preferredContact)}</div></div>
     <table><thead><tr><th>Date</th><th>Service Address</th><th>Service</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table>
     <p><strong>Notes:</strong> ${escapeHtml(invoice.notes || "—")}</p>
-    <div class="pdf-total"><p>Subtotal: <strong>${formatMoney(invoice.subtotal)}</strong></p><p>Total: <strong>${formatMoney(invoice.total)}</strong></p><p>Payment Method: ${escapeHtml(invoice.paymentMethod)}</p></div>
-    <img class="pdf-grass-art" src="images/grass.svg" alt="Paradise Lawn Care grass corner artwork">`;
+    <div class="pdf-total"><p>Subtotal: <strong>${formatMoney(invoice.subtotal)}</strong></p><p>Total: <strong>${formatMoney(invoice.total)}</strong></p><p>Payment Method: ${escapeHtml(invoice.paymentMethod)}</p></div>`;
   byId("pdfModal").hidden = false;
 }
 
@@ -2334,6 +2338,7 @@ function normalizeScheduleItemV37(item={}){
     scheduleType:item.scheduleType||item.status||"BP",
     workStatus:item.workStatus==="Completed"?"Completed":"Upcoming",
     jobNumber:item.jobId||item.jobNumber||"",
+    customer:item.customer||item.customerName||"",
     recordId:item.recordId||"",
     recordType:item.recordType||"",
     jobId:item.jobId||item.jobNumber||"",
@@ -2359,7 +2364,8 @@ function selectScheduleRecordV37(type,id){
   const r=allScheduleJobsV37().find((x)=>x.recordType===type&&x.recordId===id);
   const slot=document.querySelector(`.schedule-slot[data-schedule-key="${activeScheduleSlotKeyV36}"]`);
   if(!r||!slot)return;
-  slot.querySelector(".sched-job").textContent=r.jobId||r.recordNumber||"";
+  slot.querySelector(".sched-job-number").textContent=r.jobId||r.recordNumber||"";
+  slot.querySelector(".sched-customer-name").textContent=r.customer||"Customer";
   slot.querySelector(".sched-status-toggle").dataset.status="Upcoming";
   slot.querySelector(".sched-status-toggle").textContent=scheduleIsPastV37(activeScheduleSlotKeyV36)?"Past Due":"Upcoming";
   slot.dataset.recordId=r.recordId||"";
@@ -2367,6 +2373,7 @@ function selectScheduleRecordV37(type,id){
   slot.dataset.jobId=r.jobId||"";
   slot.dataset.customerId=r.customerId||"";
   slot.dataset.customerNumber=r.customerNumber||"";
+  slot.dataset.customer=r.customer||"";
   closeScheduleRecordFinder();
   saveSchedule();
   renderSchedule();
@@ -2374,7 +2381,7 @@ function selectScheduleRecordV37(type,id){
   byId("scheduleSelectedRecord").textContent=r.jobId||r.recordNumber||"Job";
 }
 function findScheduleRecordForSlotV37(slot){
-  const jobId=slot?.dataset.jobId||slot?.querySelector(".sched-job")?.textContent.trim()||"";
+  const jobId=slot?.dataset.jobId||slot?.querySelector(".sched-job-number")?.textContent.trim()||"";
   const recordId=slot?.dataset.recordId||"";
   return allScheduleJobsV37().find((r)=>(recordId&&r.recordId===recordId)||(jobId&&r.jobId===jobId));
 }
@@ -2385,6 +2392,27 @@ function showScheduleAddressV37(slotKey){
   activeScheduleSlotKeyV36=slotKey;
   showScheduleCustomerCardV36(record,slotKey);
   byId("scheduleSelectedRecord").textContent=record.jobId||record.recordNumber||"Job";
+}
+function openScheduleMapV319(slotKey){
+  const slot=document.querySelector(`.schedule-slot[data-schedule-key="${slotKey}"]`);
+  const record=findScheduleRecordForSlotV37(slot);
+  if(!record){alert("Select a job with the search button first.");return;}
+  const address=record.address||"";
+  if(!address){alert("This job does not have a service address saved.");return;}
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,"_blank","noopener");
+}
+function deleteScheduleJobV319(slotKey){
+  const data=getScheduleData();
+  if(!data[slotKey])return;
+  const item=normalizeScheduleItemV37(data[slotKey]);
+  const label=[item.jobNumber,item.customer].filter(Boolean).join(" · ")||"this scheduled job";
+  if(!confirm(`Remove ${label} from the schedule?`))return;
+  delete data[slotKey];
+  localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(data));
+  if(activeScheduleSlotKeyV36===slotKey)clearScheduleSelection();
+  renderSchedule();
+  byId("scheduleSaveStatus").textContent="Scheduled job removed.";
+  if(typeof refreshHomeDashboard==="function")refreshHomeDashboard();
 }
 function wireScheduleInteractionsV319(){
   byId("scheduleBody")?.querySelectorAll("[data-schedule-details]").forEach((button)=>{
@@ -2414,11 +2442,13 @@ renderSchedule=function(){
         const item=normalizeScheduleItemV37(data[key]||{});
         const pastDue=item.workStatus!=="Completed"&&scheduleIsPastV37(key);
         const statusText=item.workStatus==="Completed"?"Completed":pastDue?"Past Due":"Upcoming";
-        html+=`<td><div class="schedule-slot" data-schedule-key="${key}" data-record-id="${escapeHtml(item.recordId)}" data-record-type="${escapeHtml(item.recordType)}" data-job-id="${escapeHtml(item.jobId)}" data-customer-id="${escapeHtml(item.customerId)}" data-customer-number="${escapeHtml(item.customerNumber)}">
+        html+=`<td><div class="schedule-slot" data-schedule-key="${key}" data-record-id="${escapeHtml(item.recordId)}" data-record-type="${escapeHtml(item.recordType)}" data-job-id="${escapeHtml(item.jobId)}" data-customer-id="${escapeHtml(item.customerId)}" data-customer-number="${escapeHtml(item.customerNumber)}" data-customer="${escapeHtml(item.customer)}">
           <div class="schedule-main-row">
             <select class="sched-type" aria-label="Schedule type"><option value="BP" ${item.scheduleType==="BP"?"selected":""}>BP</option><option value="RS" ${item.scheduleType==="RS"?"selected":""}>RS</option></select>
             <button type="button" class="schedule-search-button" onclick="openScheduleRecordFinder('${key}')" aria-label="Search jobs">⌕</button>
-            <button type="button" class="sched-job job-number-button" data-schedule-details="${key}">${escapeHtml(item.jobNumber||"Job Number")}</button>
+            <button type="button" class="sched-job job-number-button" data-schedule-details="${key}"><span class="sched-job-number">${escapeHtml(item.jobNumber||"Job Number")}</span><span class="sched-customer-name">${escapeHtml(item.customer||"")}</span></button>
+            <button type="button" class="schedule-map-button" onclick="openScheduleMapV319('${key}')" aria-label="Open job address in maps" title="Open Map">📍</button>
+            <button type="button" class="schedule-delete-button" onclick="deleteScheduleJobV319('${key}')" aria-label="Remove job from schedule" title="Delete">×</button>
           </div>
           <button type="button" class="sched-status-toggle ${item.workStatus==="Completed"?"is-completed":""} ${pastDue?"is-past-due":""}" data-status="${escapeHtml(item.workStatus)}" onclick="toggleScheduleStatusV37(this)">${statusText}</button>
         </div></td>`;
@@ -2432,8 +2462,10 @@ renderSchedule=function(){
 saveSchedule=function(){
   const data=getScheduleData();
   document.querySelectorAll(".schedule-slot").forEach((slot)=>{
-    const jobNumber=slot.querySelector(".sched-job")?.textContent.trim()==="Job Number"?"":slot.querySelector(".sched-job")?.textContent.trim()||"";
-    const item={scheduleType:slot.querySelector(".sched-type")?.value||"BP",workStatus:slot.querySelector(".sched-status-toggle")?.dataset.status||"Upcoming",jobNumber,recordId:slot.dataset.recordId||"",recordType:slot.dataset.recordType||"",jobId:slot.dataset.jobId||jobNumber,customerId:slot.dataset.customerId||"",customerNumber:slot.dataset.customerNumber||""};
+    const displayedJob=slot.querySelector(".sched-job-number")?.textContent.trim()||"";
+    const jobNumber=displayedJob==="Job Number"?"":displayedJob;
+    const customer=slot.dataset.customer||slot.querySelector(".sched-customer-name")?.textContent.trim()||"";
+    const item={scheduleType:slot.querySelector(".sched-type")?.value||"BP",workStatus:slot.querySelector(".sched-status-toggle")?.dataset.status||"Upcoming",jobNumber,customer,recordId:slot.dataset.recordId||"",recordType:slot.dataset.recordType||"",jobId:slot.dataset.jobId||jobNumber,customerId:slot.dataset.customerId||"",customerNumber:slot.dataset.customerNumber||""};
     if(jobNumber||item.recordId)data[slot.dataset.scheduleKey]=item;else delete data[slot.dataset.scheduleKey];
   });
   localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(data));
@@ -3624,3 +3656,9 @@ function loadQuote(id){
 }
 function initializeQuoteV318(){const a=byId("quoteAmount");if(a){a.addEventListener("blur",normalizeQuoteMoneyV318);a.addEventListener("input",()=>{a.value=a.value.replace(/[^0-9.,]/g,"");});}populateCustomerSelectors();}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initializeQuoteV318,{once:true});else initializeQuoteV318();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", ensureParadiseBrandingLayoutV319, { once: true });
+} else {
+  ensureParadiseBrandingLayoutV319();
+}
