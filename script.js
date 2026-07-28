@@ -902,19 +902,78 @@ function buildInvoiceMessage(invoice) {
   return `Paradise Lawn Care invoice ${invoice.jobNumber} for ${customer}. Total due: ${formatMoney(invoice.total)}. Thank you for choosing Paradise Lawn Care.`;
 }
 
+function normalizedPhoneV319(value) {
+  const source = String(value || "").trim();
+  const digits = source.replace(/\D/g, "");
+  if (digits.length < 7) return "";
+  return source.startsWith("+") ? `+${digits}` : digits;
+}
+
+function normalizedEmailV319(value) {
+  const email = String(value || "").trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+function emailRecipientV319(value) {
+  return encodeURIComponent(value).replace(/%40/gi, "@");
+}
+
+function openDeviceLinkV319(url) {
+  if (typeof window.__paradiseDeviceLinkHandler === "function") {
+    window.__paradiseDeviceLinkHandler(url);
+    return url;
+  }
+  window.location.href = url;
+  return url;
+}
+
+function launchTextV319(phoneValue, body, missingMessage, notify = (message) => alert(message)) {
+  const phone = normalizedPhoneV319(phoneValue);
+  if (!phone) {
+    notify(missingMessage || "Please add a valid phone number before opening a text message.");
+    return false;
+  }
+  openDeviceLinkV319(`sms:${phone}?body=${encodeURIComponent(String(body || ""))}`);
+  return true;
+}
+
+function launchEmailV319(emailValue, subject, body, missingMessage, notify = (message) => alert(message)) {
+  const email = normalizedEmailV319(emailValue);
+  if (!email) {
+    notify(missingMessage || "Please add a valid email address before opening an email.");
+    return false;
+  }
+  openDeviceLinkV319(`mailto:${emailRecipientV319(email)}?subject=${encodeURIComponent(String(subject || ""))}&body=${encodeURIComponent(String(body || ""))}`);
+  return true;
+}
+
+function launchPhoneV319(phoneValue, missingMessage, notify = (message) => alert(message)) {
+  const phone = normalizedPhoneV319(phoneValue);
+  if (!phone) {
+    notify(missingMessage || "Please add a valid phone number before opening the phone application.");
+    return false;
+  }
+  openDeviceLinkV319(`tel:${phone}`);
+  return true;
+}
+
 function emailInvoice() {
   const invoice = collectInvoice();
-  const subject = encodeURIComponent(`Paradise Lawn Care Invoice ${invoice.jobNumber}`);
-  const body = encodeURIComponent(buildInvoiceMessage(invoice) + "\n\nOpen the app and use View PDF to print or save a copy of the invoice.");
-  const recipient = encodeURIComponent(invoice.email || "");
-  window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
+  return launchEmailV319(
+    invoice.email,
+    `Paradise Lawn Care Invoice ${invoice.jobNumber}`,
+    `${buildInvoiceMessage(invoice)}\n\nOpen the app and use View PDF to print or save a copy of the invoice.`,
+    "Please add the customer's email address before emailing this invoice."
+  );
 }
 
 function textInvoice() {
   const invoice = collectInvoice();
-  const phone = String(invoice.phone || "").replace(/[^0-9+]/g, "");
-  const body = encodeURIComponent(buildInvoiceMessage(invoice));
-  window.location.href = `sms:${phone}?&body=${body}`;
+  return launchTextV319(
+    invoice.phone,
+    buildInvoiceMessage(invoice),
+    "Please add the customer's phone number before texting this invoice."
+  );
 }
 
 function updateInvoicePreferredContactActions(value = PreferredContactComponent.sync("invoicePreferredContact")) {
@@ -931,16 +990,43 @@ function viewInvoicePdf() {
   const rows = invoice.services.length ? invoice.services.map((service) => `
     <tr><td>${escapeHtml(formatDisplayDate(service.date))}</td><td>${escapeHtml(service.address)}</td><td>${escapeHtml(service.service)}</td><td>${formatMoney(service.amount)}</td></tr>`).join("") : '<tr><td colspan="4">No services entered.</td></tr>';
   byId("pdfPreview").innerHTML = `
-    <div class="pdf-company"><h1>Paradise Lawn Care, LLC</h1><strong>We Make Your Lawn Paradise Perfect.</strong><p>772-323-9401 · ParadiseLawncare772@gmail.com<br>5685 SE Ault Ave., Suite 1, Stuart, FL 34997</p></div>
+    <div class="pdf-branding">
+      <img class="pdf-logo" src="images/paradise-logo.svg" alt="Paradise Lawn Care, LLC logo">
+      <div class="pdf-company"><h1>Paradise Lawn Care, LLC</h1><strong>We Make Your Lawn Paradise Perfect.</strong><p>772-323-9401 · ParadiseLawncare772@gmail.com<br>5685 SE Ault Ave., Suite 1, Stuart, FL 34997</p></div>
+    </div>
     <div class="pdf-meta"><div><strong>Invoice:</strong> ${escapeHtml(invoice.jobNumber)}<br><strong>Invoice Date:</strong> ${escapeHtml(formatDisplayDate(invoice.invoiceDate))}<br><strong>Due Date:</strong> ${escapeHtml(formatDisplayDate(invoice.dueDate))}</div><div><strong>Bill To:</strong><br>${escapeHtml(customer)}<br>${escapeHtml(invoice.billingAddress)}<br>${escapeHtml(invoice.cityStateZip)}<br>${escapeHtml(invoice.phone)}<br>${escapeHtml(invoice.email)}<br><strong>Preferred Contact:</strong> ${escapeHtml(invoice.preferredContact)}</div></div>
     <table><thead><tr><th>Date</th><th>Service Address</th><th>Service</th><th>Amount</th></tr></thead><tbody>${rows}</tbody></table>
     <p><strong>Notes:</strong> ${escapeHtml(invoice.notes || "—")}</p>
-    <div class="pdf-total"><p>Subtotal: <strong>${formatMoney(invoice.subtotal)}</strong></p><p>Total: <strong>${formatMoney(invoice.total)}</strong></p><p>Payment Method: ${escapeHtml(invoice.paymentMethod)}</p></div>`;
+    <div class="pdf-total"><p>Subtotal: <strong>${formatMoney(invoice.subtotal)}</strong></p><p>Total: <strong>${formatMoney(invoice.total)}</strong></p><p>Payment Method: ${escapeHtml(invoice.paymentMethod)}</p></div>
+    <img class="pdf-grass-art" src="images/grass.svg" alt="Paradise Lawn Care grass corner artwork">`;
   byId("pdfModal").hidden = false;
 }
 
 function closePdfPreview() { byId("pdfModal").hidden = true; }
-function printInvoicePreview() { window.print(); }
+function waitForInvoiceArtworkV319(timeout = 3000) {
+  const images = [...byId("pdfPreview").querySelectorAll("img")];
+  if (!images.length) return Promise.resolve();
+  return Promise.all(images.map((image) => {
+    if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        image.removeEventListener("load", finish);
+        image.removeEventListener("error", finish);
+        resolve();
+      };
+      image.addEventListener("load", finish, { once: true });
+      image.addEventListener("error", finish, { once: true });
+      window.setTimeout(finish, timeout);
+    });
+  }));
+}
+async function printInvoicePreview() {
+  await waitForInvoiceArtworkV319();
+  window.print();
+}
 
 function normalizeDate(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
 function dateKey(date) { return getLocalDateString(date); }
@@ -1502,21 +1588,27 @@ function prepareCustomerCommunication(customerId, overrideMethod, sourceElement)
     return;
   }
   if (method === "Email") {
-    if (!customer.email) {
-      setCommunicationStatus(`${customer.name || customer.business || "Customer"} does not have an email address saved.`);
-      return;
-    }
-    window.location.href = `mailto:${encodeURIComponent(customer.email)}?subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(message.body)}`;
-    return;
+    return launchEmailV319(
+      customer.email,
+      message.subject,
+      message.body,
+      `${customer.name || customer.business || "Customer"} does not have a valid email address saved.`,
+      setCommunicationStatus
+    );
   }
-  const phone = String(customer.phone || "").replace(/[^0-9+]/g, "");
-  if (!phone) {
-    setCommunicationStatus(`${customer.name || customer.business || "Customer"} does not have a phone number saved.`);
-    return;
+  if (method === "Text") {
+    return launchTextV319(
+      customer.phone,
+      message.body,
+      `${customer.name || customer.business || "Customer"} does not have a valid phone number saved.`,
+      setCommunicationStatus
+    );
   }
-  window.location.href = method === "Text"
-    ? `sms:${phone}?&body=${encodeURIComponent(message.body)}`
-    : `tel:${phone}`;
+  return launchPhoneV319(
+    customer.phone,
+    `${customer.name || customer.business || "Customer"} does not have a valid phone number saved.`,
+    setCommunicationStatus
+  );
 }
 
 function prepareMassEmail(customers = communicationChosenCustomers()) {
@@ -1528,7 +1620,7 @@ function prepareMassEmail(customers = communicationChosenCustomers()) {
   }
   const message = communicationMessage();
   setCommunicationStatus(`Prepared an email for ${emails.length} customer${emails.length === 1 ? "" : "s"}.`);
-  window.location.href = `mailto:?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(message.body)}`;
+  openDeviceLinkV319(`mailto:?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent(message.subject)}&body=${encodeURIComponent(message.body)}`);
 }
 
 function prepareMassText(customers = communicationChosenCustomers()) {
@@ -1540,7 +1632,7 @@ function prepareMassText(customers = communicationChosenCustomers()) {
   }
   const message = communicationMessage();
   setCommunicationStatus(`Prepared a text for ${phones.length} customer${phones.length === 1 ? "" : "s"}.`);
-  window.location.href = `sms:${phones.join(",")}?&body=${encodeURIComponent(message.body)}`;
+  openDeviceLinkV319(`sms:${phones.join(",")}?body=${encodeURIComponent(message.body)}`);
 }
 
 function preparePreferredCommunications(sourceElement) {
@@ -1596,6 +1688,69 @@ async function copyCommunicationMessage() {
     textarea.remove();
     setCommunicationStatus("The message was copied.");
   }
+}
+
+function currentQuoteForCommunicationV319() {
+  const customer = (typeof quoteSelectedCustomerV318 === "function" ? quoteSelectedCustomerV318() : null)
+    || readArray(CUSTOMER_STORAGE_KEY).find((item) => item.id === byId("quoteCustomer")?.value);
+  return {
+    number: byId("quoteNumber")?.value || "Quote",
+    customerName: customer?.name || customer?.business || "Customer",
+    phone: byId("quotePhone")?.value || customer?.phone || "",
+    email: byId("quoteEmail")?.value || customer?.email || "",
+    amount: cleanMoney(byId("quoteAmount")?.value),
+    scope: byId("quoteScope")?.value.trim() || "lawn care service"
+  };
+}
+
+function buildQuoteMessageV319(quote) {
+  return `Paradise Lawn Care quote ${quote.number} for ${quote.customerName}. ${quote.scope}. Estimated total: ${formatMoney(quote.amount)}. Please contact us with any questions.`;
+}
+
+function emailQuote() {
+  const quote = currentQuoteForCommunicationV319();
+  return launchEmailV319(
+    quote.email,
+    `Paradise Lawn Care Quote ${quote.number}`,
+    buildQuoteMessageV319(quote),
+    "Please add the customer's email address before emailing this quote."
+  );
+}
+
+function textQuote() {
+  const quote = currentQuoteForCommunicationV319();
+  return launchTextV319(
+    quote.phone,
+    buildQuoteMessageV319(quote),
+    "Please add the customer's phone number before texting this quote."
+  );
+}
+
+function currentCustomerForCommunicationV319() {
+  return {
+    name: byId("customerName")?.value.trim() || byId("customerBusiness")?.value.trim() || "Customer",
+    phone: byId("customerPhone")?.value || "",
+    email: byId("customerEmail")?.value || ""
+  };
+}
+
+function emailCustomer() {
+  const customer = currentCustomerForCommunicationV319();
+  return launchEmailV319(
+    customer.email,
+    "A message from Paradise Lawn Care",
+    `Hello ${customer.name},\n\nThis is Paradise Lawn Care. Please contact us when convenient.\n\nThank you.`,
+    "Please add the customer's email address before opening an email."
+  );
+}
+
+function textCustomer() {
+  const customer = currentCustomerForCommunicationV319();
+  return launchTextV319(
+    customer.phone,
+    `Hello ${customer.name}, this is Paradise Lawn Care. Please contact us when convenient. Thank you.`,
+    "Please add the customer's phone number before opening a text message."
+  );
 }
 
 /* Employees and payroll */
@@ -2015,9 +2170,58 @@ convertQuoteToInvoice=function(){
 };
 
 function allScheduleRecordsV36(){
-  const customers=readArray(CUSTOMER_STORAGE_KEY);const customerMap=new Map(customers.map(c=>[c.id,c]));
-  const quotes=readArray(QUOTE_STORAGE_KEY).map(q=>({recordType:"Quote",recordId:q.id,recordNumber:q.number,jobId:q.jobId,customerId:q.customerId,customerNumber:q.customerNumber||customerMap.get(q.customerId)?.customerNumber||"",customer:customerLabelV36(customerMap.get(q.customerId))||q.customerName,address:addressForRecordV36(q),phone:customerMap.get(q.customerId)?.phone||"",service:q.scope||q.frequency||"",status:q.status||"Draft"}));
-  const invoices=getSavedInvoices().map(i=>({recordType:"Invoice",recordId:i.id,recordNumber:i.invoiceNumber||i.jobNumber,jobId:i.jobId,customerId:i.customerId,customerNumber:i.customerNumber||customerMap.get(i.customerId)?.customerNumber||"",customer:i.clientName||i.businessName||customerLabelV36(customerMap.get(i.customerId)),address:addressForRecordV36(i),phone:i.phone||customerMap.get(i.customerId)?.phone||"",service:i.services?.[0]?.service||"",status:i.status||"Unpaid"}));
+  const customers=readArray(CUSTOMER_STORAGE_KEY);
+  const customerMap=new Map(customers.map(c=>[c.id,c]));
+  const quotes=readArray(QUOTE_STORAGE_KEY).map(q=>{
+    const customer=customerMap.get(q.customerId);
+    const property=q.property||customer?.properties?.[0]||null;
+    return {
+      recordType:"Quote",
+      recordId:q.id,
+      recordNumber:q.number,
+      jobId:q.jobId,
+      customerId:q.customerId,
+      customerNumber:q.customerNumber||customer?.customerNumber||"",
+      customer:customerLabelV36(customer)||q.customerName,
+      business:customer?.business||"",
+      address:addressForRecordV36(q),
+      phone:q.phone||customer?.phone||"",
+      email:q.email||customer?.email||"",
+      preferredContact:preferredContactForRecord(q,preferredContactForRecord(customer)),
+      property,
+      service:q.scope||q.frequency||"",
+      frequency:q.frequency||"",
+      notes:q.notes||"",
+      customerNotes:customer?.notes||"",
+      status:q.status||"Draft",
+      coordinates:coordinatesForRecordV319(q,customer,property)
+    };
+  });
+  const invoices=getSavedInvoices().map(i=>{
+    const customer=customerMap.get(i.customerId);
+    const property=customer?.properties?.find(p=>p.address&&p.address===i.services?.[0]?.address)||customer?.properties?.[0]||null;
+    return {
+      recordType:"Invoice",
+      recordId:i.id,
+      recordNumber:i.invoiceNumber||i.jobNumber,
+      jobId:i.jobId,
+      customerId:i.customerId,
+      customerNumber:i.customerNumber||customer?.customerNumber||"",
+      customer:i.clientName||i.businessName||customerLabelV36(customer),
+      business:i.businessName||customer?.business||"",
+      address:addressForRecordV36(i),
+      phone:i.phone||customer?.phone||"",
+      email:i.email||customer?.email||"",
+      preferredContact:preferredContactForRecord(i,preferredContactForRecord(customer)),
+      property,
+      service:i.services?.map(s=>s.service).filter(Boolean).join(", ")||"",
+      frequency:i.frequency||"",
+      notes:i.notes||"",
+      customerNotes:customer?.notes||"",
+      status:i.status||"Unpaid",
+      coordinates:coordinatesForRecordV319(i,customer,property)
+    };
+  });
   return [...invoices,...quotes];
 }
 function searchableScheduleRecordV36(r){return [r.recordType,r.recordNumber,r.jobId,r.customerNumber,r.customer,r.address,r.phone,r.service,r.status].join(" ").toLowerCase();}
@@ -2025,8 +2229,47 @@ function openScheduleRecordFinder(slotKey){activeScheduleSlotKeyV36=slotKey;byId
 function closeScheduleRecordFinder(){byId("scheduleRecordFinderModal").hidden=true;}
 function renderScheduleRecordResultsV36(){const q=(byId("scheduleRecordSearch")?.value||"").toLowerCase();const records=allScheduleRecordsV36().filter(r=>searchableScheduleRecordV36(r).includes(q)).slice(0,60);byId("scheduleRecordResults").innerHTML=records.length?records.map(r=>`<button type="button" class="record-card schedule-result" onclick="selectScheduleRecordV36('${r.recordType}','${r.recordId}')"><strong>${escapeHtml(r.recordType)} ${escapeHtml(r.recordNumber||"")} · ${escapeHtml(r.customer)}</strong><span>${escapeHtml(r.jobId||"No Job ID")} · ${escapeHtml(r.customerNumber||"No Customer ID")}</span><small>${escapeHtml(r.address||"No address")}</small></button>`).join(""):'<p class="empty-message">No matching quotes or invoices found.</p>';}
 function selectScheduleRecordV36(type,id){const r=allScheduleRecordsV36().find(x=>x.recordType===type&&x.recordId===id);const slot=document.querySelector(`.schedule-slot[data-schedule-key="${activeScheduleSlotKeyV36}"]`);if(!r||!slot)return;slot.querySelector(".sched-job").value=r.recordNumber||r.jobId||"";slot.querySelector(".sched-record-type").value=r.recordType;slot.querySelector(".sched-work-status").value="Scheduled";slot.querySelector(".sched-customer").value=r.customer||"";slot.querySelector(".sched-service").value=r.service||"";slot.dataset.recordId=r.recordId||"";slot.dataset.jobId=r.jobId||"";slot.dataset.customerId=r.customerId||"";slot.dataset.customerNumber=r.customerNumber||"";showScheduleCustomerCardV36(r);closeScheduleRecordFinder();saveSchedule();}
-function showScheduleCustomerCardV36(r){const card=byId("scheduleCustomerCard");card.hidden=false;byId("scheduleSelectedRecord").textContent=`${r.recordType} ${r.recordNumber||""} · ${r.jobId||""}`;byId("scheduleSelectedCustomer").textContent=r.customer||"—";byId("scheduleSelectedCustomerId").textContent=r.customerNumber||"—";byId("scheduleSelectedAddress").textContent=r.address||"—";byId("scheduleSelectedPhone").textContent=r.phone||"—";}
-function clearScheduleSelection(){byId("scheduleCustomerCard").hidden=true;activeScheduleSlotKeyV36=null;}
+let activeScheduleDetailsV319=null;
+function showScheduleCustomerCardV36(r,slotKey=activeScheduleSlotKeyV36){
+  const card=byId("scheduleCustomerCard");
+  if(!card||!r)return;
+  const customer=readArray(CUSTOMER_STORAGE_KEY).find(c=>c.id===r.customerId)||null;
+  const property=r.property||customer?.properties?.find(p=>p.address&&p.address===r.address)||customer?.properties?.[0]||null;
+  const scheduleItem=slotKey?getScheduleData()[slotKey]||{}:{};
+  const scheduledDate=scheduleDateFromKeyV37(slotKey);
+  const scheduledTime=slotKey?timeLabel(phaseCTimeFromScheduleKey(slotKey).hour,phaseCTimeFromScheduleKey(slotKey).minute):"";
+  const access=[
+    property?.gateCode?`Gate: ${property.gateCode}`:"",
+    property?.hoa?`Restrictions: ${property.hoa}`:"",
+    property?.warning?`Safety: ${property.warning}`:"",
+    property?.irrigation?`Irrigation: ${property.irrigation}`:"",
+    property?.mowingHeight?`Mowing height: ${property.mowingHeight}`:""
+  ].filter(Boolean).join(" · ");
+  const notes=[property?.notes,r.notes,r.customerNotes,customer?.notes].filter(Boolean).filter((value,index,array)=>array.indexOf(value)===index).join(" · ");
+  activeScheduleDetailsV319={record:r,customer,property,slotKey,scheduleItem,address:r.address||property?.address||"",coordinates:r.coordinates||coordinatesForRecordV319(r,customer,property)};
+  card.hidden=false;
+  byId("scheduleSelectedRecord").textContent=`${r.recordType} ${r.recordNumber||""} · ${r.jobId||""}`;
+  byId("scheduleSelectedCustomer").textContent=r.customer||customerLabelV36(customer)||"—";
+  byId("scheduleSelectedCustomerId").textContent=r.customerNumber||customer?.customerNumber||"—";
+  byId("scheduleSelectedAddress").textContent=activeScheduleDetailsV319.address||"Address incomplete";
+  byId("scheduleSelectedPhone").textContent=r.phone||customer?.phone||"—";
+  const details=byId("scheduleSelectedDetails");
+  if(details)details.innerHTML=`
+    <div><span>Business</span><strong>${escapeHtml(r.business||customer?.business||"—")}</strong></div>
+    <div><span>Email</span><strong>${escapeHtml(r.email||customer?.email||"—")}</strong></div>
+    <div><span>Preferred Contact</span><strong>${escapeHtml(preferredContactForRecord(r,preferredContactForRecord(customer)))}</strong></div>
+    <div><span>Scheduled</span><strong>${escapeHtml([formatDateLong(scheduledDate),scheduledTime].filter(Boolean).join(" at ")||"—")}</strong></div>
+    <div><span>Service / Frequency</span><strong>${escapeHtml([r.service,r.frequency].filter(Boolean).join(" · ")||"—")}</strong></div>
+    <div><span>Work Status</span><strong>${escapeHtml(scheduleItem.workStatus||r.status||"—")}</strong></div>
+    <div class="schedule-detail-wide"><span>Property &amp; Access</span><strong>${escapeHtml(property?.name||r.address||"Property")}</strong><small>${escapeHtml(access||"No gate, access, or safety instructions saved.")}</small></div>
+    <div class="schedule-detail-wide"><span>Job &amp; Customer Notes</span><strong>${escapeHtml(notes||"No notes saved.")}</strong></div>`;
+}
+function clearScheduleSelection(){
+  byId("scheduleCustomerCard").hidden=true;
+  if(byId("scheduleSelectedDetails"))byId("scheduleSelectedDetails").innerHTML="";
+  activeScheduleDetailsV319=null;
+  activeScheduleSlotKeyV36=null;
+}
 
 const renderScheduleV36Base=renderSchedule;
 renderSchedule=function(){
@@ -2131,7 +2374,7 @@ function selectScheduleRecordV37(type,id){
   byId("scheduleSelectedRecord").textContent=r.jobId||r.recordNumber||"Job";
 }
 function findScheduleRecordForSlotV37(slot){
-  const jobId=slot?.dataset.jobId||slot?.querySelector(".sched-job")?.value||"";
+  const jobId=slot?.dataset.jobId||slot?.querySelector(".sched-job")?.textContent.trim()||"";
   const recordId=slot?.dataset.recordId||"";
   return allScheduleJobsV37().find((r)=>(recordId&&r.recordId===recordId)||(jobId&&r.jobId===jobId));
 }
@@ -2139,8 +2382,14 @@ function showScheduleAddressV37(slotKey){
   const slot=document.querySelector(`.schedule-slot[data-schedule-key="${slotKey}"]`);
   const record=findScheduleRecordForSlotV37(slot);
   if(!record){alert("Select a job with the search button first.");return;}
-  showScheduleCustomerCardV36(record);
+  activeScheduleSlotKeyV36=slotKey;
+  showScheduleCustomerCardV36(record,slotKey);
   byId("scheduleSelectedRecord").textContent=record.jobId||record.recordNumber||"Job";
+}
+function wireScheduleInteractionsV319(){
+  byId("scheduleBody")?.querySelectorAll("[data-schedule-details]").forEach((button)=>{
+    button.addEventListener("click",()=>showScheduleAddressV37(button.dataset.scheduleDetails));
+  });
 }
 function toggleScheduleStatusV37(button){
   const next=button.dataset.status==="Completed"?"Upcoming":"Completed";
@@ -2169,7 +2418,7 @@ renderSchedule=function(){
           <div class="schedule-main-row">
             <select class="sched-type" aria-label="Schedule type"><option value="BP" ${item.scheduleType==="BP"?"selected":""}>BP</option><option value="RS" ${item.scheduleType==="RS"?"selected":""}>RS</option></select>
             <button type="button" class="schedule-search-button" onclick="openScheduleRecordFinder('${key}')" aria-label="Search jobs">⌕</button>
-            <button type="button" class="sched-job job-number-button" onclick="showScheduleAddressV37('${key}')">${escapeHtml(item.jobNumber||"Job Number")}</button>
+            <button type="button" class="sched-job job-number-button" data-schedule-details="${key}">${escapeHtml(item.jobNumber||"Job Number")}</button>
           </div>
           <button type="button" class="sched-status-toggle ${item.workStatus==="Completed"?"is-completed":""} ${pastDue?"is-past-due":""}" data-status="${escapeHtml(item.workStatus)}" onclick="toggleScheduleStatusV37(this)">${statusText}</button>
         </div></td>`;
@@ -2178,6 +2427,7 @@ renderSchedule=function(){
     }
   }
   byId("scheduleBody").innerHTML=html;
+  wireScheduleInteractionsV319();
 };
 saveSchedule=function(){
   const data=getScheduleData();
@@ -2206,7 +2456,10 @@ installDemoInvoices=function(){
 const BILLING_VERSION_V38 = "3.19";
 const normalizeScheduleItemV37Base = normalizeScheduleItemV37;
 normalizeScheduleItemV37 = function(item={}){
-  return {...normalizeScheduleItemV37Base(item), completedAt:item.completedAt||"", billingInvoiceId:item.billingInvoiceId||""};
+  const normalized=normalizeScheduleItemV37Base(item);
+  const savedStatus=String(item.workStatus||"").trim();
+  if(savedStatus==="Cancelled"||savedStatus==="Canceled")normalized.workStatus=savedStatus;
+  return {...normalized, completedAt:item.completedAt||"", billingInvoiceId:item.billingInvoiceId||""};
 };
 
 function billingMethodForCustomerV38(customer){return customer?.billingMethod||"Per Service";}
@@ -2308,7 +2561,19 @@ toggleScheduleStatusV37=function(button){
 };
 const saveScheduleV38Base=saveSchedule;
 saveSchedule=function(){
-  const previous=getScheduleData();saveScheduleV38Base();const current=getScheduleData();Object.keys(current).forEach(k=>{current[k].completedAt=previous[k]?.completedAt||current[k].completedAt||"";current[k].billingInvoiceId=previous[k]?.billingInvoiceId||current[k].billingInvoiceId||"";});localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(current));refreshHomeDashboard();
+  const previous=getScheduleData();
+  saveScheduleV38Base();
+  const current=getScheduleData();
+  Object.keys(current).forEach(k=>{
+    current[k]={
+      ...(previous[k]||{}),
+      ...current[k],
+      completedAt:previous[k]?.completedAt||current[k].completedAt||"",
+      billingInvoiceId:previous[k]?.billingInvoiceId||current[k].billingInvoiceId||""
+    };
+  });
+  localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(current));
+  refreshHomeDashboard();
 };
 
 const installDemoInvoicesV38Base=installDemoInvoices;
@@ -2519,51 +2784,786 @@ let radarFrameIndex = 0;
 let radarTimer = null;
 let weatherInitialized = false;
 let activeWeatherLocation = { ...WEATHER_DEFAULT };
+let radarLoadPromiseV319 = null;
+let radarTileFailureReportedV319 = false;
 function cToF(value) { return value == null ? null : Math.round((Number(value) * 9 / 5) + 32); }
 function kphToMph(value) { return value == null ? null : Math.round(Number(value) * 0.621371); }
 function weatherText(id, value) { const el = byId(id); if (el) el.textContent = value; }
-function initializeWeatherMap() { if (weatherMap || typeof L === "undefined" || !byId("weatherRadarMap")) return; weatherMap = L.map("weatherRadarMap", { maxBounds: [[26.55,-81.0],[27.85,-79.55]], minZoom: 7 }).setView([27.18, -80.27], 9); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(weatherMap); L.rectangle(WEATHER_BOUNDS, { color: "#2f7d32", weight: 2, fillOpacity: 0.03 }).addTo(weatherMap).bindTooltip("Paradise Lawn Care service area"); [["Fort Pierce",27.4467,-80.3256],["Port St. Lucie",27.2730,-80.3582],["Stuart",27.1975,-80.2528],["Hobe Sound",27.0595,-80.1364],["Jupiter",26.9342,-80.0942],["Palm Beach Gardens",26.8234,-80.1387]].forEach(([name,lat,lon]) => L.circleMarker([lat,lon],{radius:5,weight:2,fillOpacity:.8}).addTo(weatherMap).bindTooltip(name)); setTimeout(() => weatherMap.invalidateSize(), 100); }
-async function loadRadarFrames() { if (!weatherMap) return; try { const response = await fetch("https://api.rainviewer.com/public/weather-maps.json", { cache: "no-store" }); if (!response.ok) throw new Error("Radar service unavailable"); const data = await response.json(); const past = data.radar?.past || []; const nowcast = data.radar?.nowcast || []; radarFrames = [...past.slice(-6), ...nowcast].map(frame => ({ ...frame, host: data.host })); if (!radarFrames.length) throw new Error("No radar frames returned"); radarFrameIndex = Math.max(0, past.slice(-6).length - 1); buildRadarLayers(); showRadarFrame(radarFrameIndex); startRadarAnimation(); } catch (error) { weatherText("radarTimeLabel", "Radar unavailable - check internet connection"); console.error(error); } }
-function buildRadarLayers() { if (!weatherMap) return; radarLayers.forEach(layer => weatherMap.removeLayer(layer)); radarLayers = radarFrames.map(frame => { const layer = L.tileLayer(`${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, { opacity: 0, zIndex: 500, maxNativeZoom: 7, maxZoom: 18, updateWhenIdle: true, keepBuffer: 2, attribution: "Radar by RainViewer" }); layer.addTo(weatherMap); return layer; }); }
+function setRadarStatusV319(message,isError=false){
+  const status=byId("radarStatus");
+  if(!status)return;
+  status.textContent=message;
+  status.classList.toggle("is-error",Boolean(isError));
+}
+function initializeWeatherMap() {
+  const container=byId("weatherRadarMap");
+  if(weatherMap){
+    window.setTimeout(()=>weatherMap.invalidateSize(),50);
+    return weatherMap;
+  }
+  if(!container)return null;
+  if(typeof L==="undefined"){
+    setRadarStatusV319("Radar map library did not load. Select Refresh Radar after checking the application files.",true);
+    weatherText("radarTimeLabel","Map library unavailable");
+    console.warn("Radar initialization failed: Leaflet library unavailable.");
+    return null;
+  }
+  try{
+    weatherMap=L.map("weatherRadarMap",{maxBounds:[[26.55,-81.0],[27.85,-79.55]],minZoom:7}).setView([27.18,-80.27],9);
+    const base=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"&copy; OpenStreetMap"});
+    base.on?.("tileerror",()=>console.warn("Radar base-map tile could not be loaded."));
+    base.addTo(weatherMap);
+    L.rectangle(WEATHER_BOUNDS,{color:"#2f7d32",weight:2,fillOpacity:.03}).addTo(weatherMap).bindTooltip("Paradise Lawn Care service area");
+    [["Fort Pierce",27.4467,-80.3256],["Port St. Lucie",27.2730,-80.3582],["Stuart",27.1975,-80.2528],["Hobe Sound",27.0595,-80.1364],["Jupiter",26.9342,-80.0942],["Palm Beach Gardens",26.8234,-80.1387]].forEach(([name,lat,lon])=>L.circleMarker([lat,lon],{radius:5,weight:2,fillOpacity:.8}).addTo(weatherMap).bindTooltip(name));
+    window.setTimeout(()=>weatherMap.invalidateSize(),100);
+    setRadarStatusV319("Radar map is ready. Loading current radar frames...");
+    return weatherMap;
+  }catch(error){
+    weatherMap=null;
+    setRadarStatusV319("Radar map could not initialize. Select Refresh Radar to try again.",true);
+    console.error("Radar initialization failed:",error);
+    return null;
+  }
+}
+async function loadRadarFrames() {
+  if(radarLoadPromiseV319)return radarLoadPromiseV319;
+  if(!initializeWeatherMap())return false;
+  radarLoadPromiseV319=(async()=>{
+    stopRadarAnimation();
+    setRadarStatusV319("Contacting the radar provider...");
+    weatherText("radarTimeLabel","Loading radar...");
+    try{
+      const response=await fetch("https://api.rainviewer.com/public/weather-maps.json",{cache:"no-store"});
+      if(!response.ok)throw new Error(`Radar API response ${response.status}`);
+      const data=await response.json();
+      if(!data?.host)throw new Error("Radar API did not return a tile host");
+      const past=Array.isArray(data.radar?.past)?data.radar.past:[];
+      const nowcast=Array.isArray(data.radar?.nowcast)?data.radar.nowcast:[];
+      radarFrames=[...past.slice(-6),...nowcast].filter(frame=>frame?.path&&Number.isFinite(Number(frame.time))).map(frame=>({...frame,host:data.host}));
+      if(!radarFrames.length)throw new Error("Radar API returned no usable frames");
+      radarFrameIndex=Math.max(0,Math.min(radarFrames.length-1,past.slice(-6).length-1));
+      radarTileFailureReportedV319=false;
+      buildRadarLayers();
+      showRadarFrame(radarFrameIndex);
+      startRadarAnimation();
+      setRadarStatusV319(`Radar loaded with ${radarFrames.length} frame${radarFrames.length===1?"":"s"}.`);
+      return true;
+    }catch(error){
+      radarFrames=[];
+      radarLayers.forEach(layer=>weatherMap?.removeLayer(layer));
+      radarLayers=[];
+      radarLayer=null;
+      weatherText("radarTimeLabel","Radar unavailable");
+      setRadarStatusV319("Radar tiles could not be reached. Weather conditions remain available; select Refresh Radar to retry.",true);
+      console.error("Radar provider failure:",error);
+      return false;
+    }finally{
+      radarLoadPromiseV319=null;
+    }
+  })();
+  return radarLoadPromiseV319;
+}
+function buildRadarLayers() {
+  if(!weatherMap)return;
+  radarLayers.forEach(layer=>weatherMap.removeLayer(layer));
+  radarLayers=radarFrames.map(frame=>{
+    const layer=L.tileLayer(`${frame.host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,{opacity:0,zIndex:500,maxNativeZoom:7,maxZoom:18,updateWhenIdle:true,keepBuffer:2,attribution:"Radar by RainViewer"});
+    layer.on?.("tileerror",()=>{
+      if(radarTileFailureReportedV319)return;
+      radarTileFailureReportedV319=true;
+      setRadarStatusV319("Some radar tiles were blocked or unavailable. Select Refresh Radar if the map remains blank.",true);
+      console.warn("Radar tile failure: the provider, network, or browser blocked a tile request.");
+    });
+    layer.addTo(weatherMap);
+    return layer;
+  });
+}
 function showRadarFrame(index) { if (!weatherMap || !radarFrames.length) return; if (radarLayers.length !== radarFrames.length) buildRadarLayers(); radarLayers.forEach((layer, layerIndex) => layer.setOpacity(layerIndex === index ? .72 : 0)); radarLayer = radarLayers[index] || null; const frame = radarFrames[index]; weatherText("radarTimeLabel", new Date(frame.time * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); }
-function startRadarAnimation() { stopRadarAnimation(); radarTimer = setInterval(() => { radarFrameIndex = (radarFrameIndex + 1) % radarFrames.length; showRadarFrame(radarFrameIndex); }, 1200); weatherText("radarPlayButton", "Pause"); }
+function startRadarAnimation() { stopRadarAnimation(); if(!radarFrames.length){weatherText("radarPlayButton","Play");return;} radarTimer = setInterval(() => { radarFrameIndex = (radarFrameIndex + 1) % radarFrames.length; showRadarFrame(radarFrameIndex); }, 1200); weatherText("radarPlayButton", "Pause"); }
 function stopRadarAnimation() { if (radarTimer) clearInterval(radarTimer); radarTimer = null; weatherText("radarPlayButton", "Play"); }
-function toggleRadarAnimation() { radarTimer ? stopRadarAnimation() : startRadarAnimation(); }
+function toggleRadarAnimation() { if(!radarFrames.length){refreshRadarV319();return;} radarTimer ? stopRadarAnimation() : startRadarAnimation(); }
 function resetWeatherMap() { if (weatherMap) weatherMap.fitBounds(WEATHER_BOUNDS, { padding: [18,18] }); }
 async function fetchJson(url) { const response = await fetch(url, { headers: { Accept: "application/geo+json, application/json" }, cache: "no-store" }); if (!response.ok) throw new Error(`Weather request failed (${response.status})`); return response.json(); }
 async function loadWeatherForLocation(location = activeWeatherLocation) { activeWeatherLocation = location; weatherText("weatherStatus", `Loading live weather for ${location.name}...`); try { const point = await fetchJson(`https://api.weather.gov/points/${location.lat.toFixed(4)},${location.lon.toFixed(4)}`); const [forecast, stations, alerts] = await Promise.all([fetchJson(point.properties.forecast),fetchJson(point.properties.observationStations),fetchJson("https://api.weather.gov/alerts/active?area=FL")]); let observation = null; const stationUrl = stations.features?.[0]?.id; if (stationUrl) observation = await fetchJson(`${stationUrl}/observations/latest`); renderWeather(location, forecast, observation, alerts); } catch (error) { weatherText("weatherStatus", `Unable to load live weather: ${error.message}. Verify the computer is online.`); console.error(error); } }
 function renderWeather(location, forecast, observation, alerts) { const periods = forecast.properties?.periods || []; const current = observation?.properties || {}; const temp = cToF(current.temperature?.value); const wind = kphToMph(current.windSpeed?.value); weatherText("weatherCurrentTemp", temp == null ? (periods[0] ? `${periods[0].temperature}°F` : "--") : `${temp}°F`); weatherText("weatherCurrentText", current.textDescription || periods[0]?.shortForecast || "Current conditions"); weatherText("weatherRainChance", periods[0]?.probabilityOfPrecipitation?.value == null ? "--" : `${periods[0].probabilityOfPrecipitation.value}%`); weatherText("weatherWind", wind == null ? (periods[0]?.windSpeed || "--") : `${wind} mph`); weatherText("weatherWindDirection", current.windDirection?.value == null ? (periods[0]?.windDirection || location.name) : `${Math.round(current.windDirection.value)}°`); const list = byId("weatherForecastList"); if (list) list.innerHTML = periods.slice(0, 8).map(p => `<article class="weather-period"><div><strong>${p.name}</strong><span>${p.temperature}°${p.temperatureUnit}</span></div><p>${p.shortForecast}</p><small>Rain ${p.probabilityOfPrecipitation?.value ?? 0}% · Wind ${p.windDirection} ${p.windSpeed}</small></article>`).join(""); const countyTerms = ["St. Lucie", "Saint Lucie", "Martin", "Northern Palm Beach", "Palm Beach"]; const relevant = (alerts.features || []).filter(item => countyTerms.some(term => `${item.properties.areaDesc} ${item.properties.headline}`.toLowerCase().includes(term.toLowerCase()))); weatherText("weatherAlertCount", String(relevant.length)); const homeSummary = byId("homeWeatherSummary"); if (homeSummary) { const displayedTemp = temp == null ? (periods[0] ? `${periods[0].temperature}°F` : "--") : `${temp}°F`; const rainChance = periods[0]?.probabilityOfPrecipitation?.value; const windText = wind == null ? (periods[0]?.windSpeed || "--") : `${wind} mph`; homeSummary.innerHTML = `<div class="home-weather-main"><strong>${displayedTemp}</strong><span>${escapeHtml(current.textDescription || periods[0]?.shortForecast || "Current conditions")}</span></div><div class="home-weather-details"><span><b>Rain:</b> ${rainChance == null ? "--" : `${rainChance}%`}</span><span><b>Wind:</b> ${escapeHtml(windText)}</span><span><b>Alerts:</b> ${relevant.length}</span></div><small>${escapeHtml(location.name)} · Updated ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</small>`; } const alertList = byId("weatherAlertsList"); if (alertList) alertList.innerHTML = relevant.length ? relevant.map(item => `<article class="weather-alert"><strong>${item.properties.event}</strong><span>${item.properties.areaDesc}</span><p>${item.properties.headline || item.properties.description || "Weather alert"}</p></article>`).join("") : '<p class="empty-message">No active alerts affecting the selected service area.</p>'; weatherText("weatherStatus", `Live weather loaded for ${location.name}. Updated ${new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}.`); }
 function selectWeatherLocation(name, lat, lon) { loadWeatherForLocation({ name, lat, lon }); if (weatherMap) weatherMap.setView([lat, lon], 10); }
-async function refreshWeatherCenter() { initializeWeatherMap(); await Promise.all([loadWeatherForLocation(activeWeatherLocation), loadRadarFrames()]); }
-function initializePhaseBWeather() { loadWeatherForLocation(activeWeatherLocation); document.querySelectorAll('[data-tab="weatherTab"]').forEach(button => button.addEventListener("click", () => { setTimeout(() => { initializeWeatherMap(); if (weatherMap) weatherMap.invalidateSize(); if (!weatherInitialized) { weatherInitialized = true; loadRadarFrames(); } }, 60); })); }
+async function refreshRadarV319(){
+  initializeWeatherMap();
+  weatherMap?.invalidateSize();
+  return loadRadarFrames();
+}
+function getRadarStateV319(){
+  return {
+    frameCount:radarFrames.length,
+    layerCount:radarLayers.length,
+    mapInitialized:Boolean(weatherMap)
+  };
+}
+async function refreshWeatherCenter() { initializeWeatherMap(); await Promise.all([loadWeatherForLocation(activeWeatherLocation), refreshRadarV319()]); }
+function initializePhaseBWeather() {
+  loadWeatherForLocation(activeWeatherLocation);
+  document.querySelectorAll('[data-tab="weatherTab"]').forEach(button=>button.addEventListener("click",()=>{
+    window.setTimeout(()=>{
+      const map=initializeWeatherMap();
+      map?.invalidateSize();
+      if(!weatherInitialized||!radarFrames.length){
+        weatherInitialized=true;
+        loadRadarFrames();
+      }else{
+        showRadarFrame(radarFrameIndex);
+        setRadarStatusV319(`Radar ready with ${radarFrames.length} frame${radarFrames.length===1?"":"s"}.`);
+      }
+    },80);
+  }));
+}
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initializePhaseBWeather, { once: true }); else initializePhaseBWeather();
 
 /* v3.16 Complete - Route and Schedule Center */
-let phaseCRouteMap=null, phaseCRouteLayer=null, phaseCRouteMarkers=[];
-const PHASE_C_HOME_BASE={lat:27.1975,lon:-80.2528,name:"Paradise Lawn Care - Stuart"};
+let phaseCRouteMap=null;
+let phaseCRouteLayer=null;
+let phaseCRouteMarkers=[];
+let phaseCRouteStopMarkersV319=[];
+let phaseCActiveStopsV319=[];
+let phaseCActiveStartV319=null;
+let scheduleSelectionMarkerV319=null;
+let phaseCLastGeocodeRequestV319=0;
+const PHASE_C_HOME_BASE={lat:27.1975,lon:-80.2528,name:"Paradise Lawn Care Business",source:"business"};
+const ROUTE_START_STORAGE_KEY_V319="paradise_route_start_v319";
+const ROUTE_GEOCODE_CACHE_KEY_V319="paradise_geocode_cache_v319";
+const ROUTE_LOCATION_MAX_AGE_V319=5*60*1000;
+
 function phaseCDateFromScheduleKey(key){return String(key||"").split("_")[0];}
-function phaseCTimeFromScheduleKey(key){const t=String(key||"").split("_")[1]||"0800";return {hour:Number(t.slice(0,2))||8,minute:Number(t.slice(2,4))||0};}
-function phaseCNormalizeItem(item){if(typeof normalizeScheduleItemV37==='function')return normalizeScheduleItemV37(item);return item||{};}
-function phaseCInvoiceForItem(item){return getSavedInvoices().find(x=>x.id===item.recordId||x.jobNumber===item.jobNumber||x.invoiceNumber===item.jobNumber)||null;}
-function phaseCCustomerForItem(item,invoice){return readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===(item.customerId||invoice?.customerId))||null;}
-function phaseCAddressForItem(item){const invoice=phaseCInvoiceForItem(item),customer=phaseCCustomerForItem(item,invoice);return item.address||invoice?.services?.[0]?.address||invoice?.billingAddress||customer?.properties?.[0]?.address||customer?.billing||"";}
-function phaseCRevenueForItem(item){const invoice=phaseCInvoiceForItem(item);return Number(invoice?.total||invoice?.services?.reduce((s,x)=>s+Number(x.amount||0),0)||item.amount||0);}
-function phaseCTodayJobs(includeCompleted=true){const today=getLocalDateString(new Date());return Object.entries(getScheduleData()).filter(([k,v])=>phaseCDateFromScheduleKey(k)===today).map(([key,raw])=>{const item=phaseCNormalizeItem(raw);return {key,item,address:phaseCAddressForItem(item),revenue:phaseCRevenueForItem(item),time:phaseCTimeFromScheduleKey(key)};}).filter(x=>x.item.customer||x.item.jobNumber||x.item.service).filter(x=>includeCompleted||x.item.workStatus!=="Completed");}
-function phaseCFormatDuration(minutes){minutes=Math.max(0,Math.round(minutes||0));return minutes<60?`${minutes} min`:`${Math.floor(minutes/60)} hr ${minutes%60} min`;}
-function phaseCInitMap(){if(!byId('routeMap')||typeof L==='undefined')return null;if(!phaseCRouteMap){phaseCRouteMap=L.map('routeMap').setView([27.18,-80.25],9);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(phaseCRouteMap);}setTimeout(()=>phaseCRouteMap.invalidateSize(),50);return phaseCRouteMap;}
-async function phaseCGeocode(address){const q=encodeURIComponent(address);const r=await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=${q}`,{headers:{Accept:'application/json'}});if(!r.ok)throw new Error(`Address lookup failed (${r.status})`);const j=await r.json();if(!j[0])throw new Error(`Address not found: ${address}`);return {lat:Number(j[0].lat),lon:Number(j[0].lon),label:j[0].display_name};}
-function phaseCDistance(a,b){const R=3958.8,p=Math.PI/180,dLat=(b.lat-a.lat)*p,dLon=(b.lon-a.lon)*p,s=Math.sin(dLat/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(s));}
-function phaseCNearestOrder(stops){const left=[...stops],ordered=[],start={...PHASE_C_HOME_BASE};let cursor=start;while(left.length){let best=0,dist=Infinity;left.forEach((x,i)=>{const d=phaseCDistance(cursor,x);if(d<dist){dist=d;best=i;}});const next=left.splice(best,1)[0];ordered.push(next);cursor=next;}return ordered;}
-async function phaseCFetchRoute(points){const coords=points.map(p=>`${p.lon},${p.lat}`).join(';');const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`);if(!r.ok)throw new Error(`Routing service failed (${r.status})`);const j=await r.json();if(j.code!=='Ok'||!j.routes?.[0])throw new Error('No drivable route was returned.');return j.routes[0];}
-async function buildTodayRoute(){const status=byId('routeStatus'),jobs=phaseCTodayJobs(true);if(!jobs.length){status.textContent='No jobs are saved for today.';clearRouteCenter();renderPhaseCCommandCenter();return;}status.textContent=`Locating ${jobs.length} job address${jobs.length===1?'':'es'}...`;try{const located=[];for(const job of jobs){if(!job.address)continue;try{located.push({...job,...await phaseCGeocode(job.address)});}catch(e){console.warn(e);}}if(!located.length)throw new Error('No scheduled job addresses could be located.');const ordered=phaseCNearestOrder(located);status.textContent='Building the driving route...';const route=await phaseCFetchRoute([PHASE_C_HOME_BASE,...ordered]);renderPhaseCRoute(ordered,route);status.textContent=`Route built for ${ordered.length} stop${ordered.length===1?'':'s'}. Addresses are routed using OpenStreetMap and OSRM.`;}catch(e){status.textContent=`Unable to build route: ${e.message}`;console.error(e);}}
-function renderPhaseCRoute(stops,route){const map=phaseCInitMap();if(!map)return;if(phaseCRouteLayer)map.removeLayer(phaseCRouteLayer);phaseCRouteMarkers.forEach(m=>map.removeLayer(m));phaseCRouteMarkers=[];phaseCRouteLayer=L.geoJSON(route.geometry,{style:{color:'#2f6b3f',weight:5,opacity:.85}}).addTo(map);const home=L.marker([PHASE_C_HOME_BASE.lat,PHASE_C_HOME_BASE.lon]).addTo(map).bindPopup(PHASE_C_HOME_BASE.name);phaseCRouteMarkers.push(home);let elapsed=0;const serviceMinutes=60;const start=new Date();start.setHours(8,0,0,0);const eachDrive=(route.duration/60)/Math.max(1,stops.length);byId('routeStopList').innerHTML=stops.map((s,i)=>{elapsed+=eachDrive;const arrival=new Date(start.getTime()+elapsed*60000);elapsed+=serviceMinutes;const label=arrival.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});const marker=L.marker([s.lat,s.lon]).addTo(map).bindPopup(`<strong>${i+1}. ${escapeHtml(s.item.customer||s.item.jobNumber||'Job')}</strong><br>${escapeHtml(s.address)}`);phaseCRouteMarkers.push(marker);return `<article class="route-stop"><span class="route-stop-number">${i+1}</span><div><strong>${escapeHtml(s.item.customer||s.item.jobNumber||'Scheduled Job')}</strong><span>${escapeHtml(s.item.service||'Lawn service')}</span><small>${escapeHtml(s.address)}</small></div><span class="route-stop-time">${label}</span></article>`;}).join('');map.fitBounds(phaseCRouteLayer.getBounds(),{padding:[25,25]});const miles=route.distance/1609.344,driveMin=route.duration/60,revenue=stops.reduce((s,x)=>s+x.revenue,0),finish=new Date(start.getTime()+(driveMin+stops.length*serviceMinutes)*60000);byId('routeJobCount').textContent=stops.length;byId('routeMiles').textContent=`${miles.toFixed(1)} mi`;byId('routeDriveTime').textContent=phaseCFormatDuration(driveMin);byId('routeRevenue').textContent=formatMoney(revenue);byId('routeFinish').textContent=finish.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}
-function clearRouteCenter(){if(phaseCRouteMap){if(phaseCRouteLayer){phaseCRouteMap.removeLayer(phaseCRouteLayer);phaseCRouteLayer=null;}phaseCRouteMarkers.forEach(m=>phaseCRouteMap.removeLayer(m));phaseCRouteMarkers=[];}['routeJobCount','routeMiles','routeDriveTime','routeRevenue','routeFinish'].forEach((id,i)=>{if(byId(id))byId(id).textContent=['0','--','--','$0.00','--'][i];});if(byId('routeStopList'))byId('routeStopList').innerHTML='<p class="empty-message">No route built yet.</p>';}
-function prepareRunningLateNotices(){const jobs=phaseCTodayJobs(false);if(!jobs.length){alert('There are no incomplete jobs today.');return;}communicationSelectedCustomerIds.clear();jobs.forEach(job=>{const customerId=job.item?.customerId||phaseCCustomerForItem(job.item,phaseCInvoiceForItem(job.item))?.id;if(customerId)communicationSelectedCustomerIds.add(customerId);});openDashboardSection('communicationTab');if(byId('communicationAudience'))byId('communicationAudience').value='selected';if(byId('communicationSubject'))byId('communicationSubject').value='Paradise Lawn Care Schedule Update';if(byId('communicationBody'))byId('communicationBody').value='Paradise Lawn Care is running behind schedule today. We are still planning to service your property and will arrive as soon as possible. Thank you for your patience.';if(typeof renderCommunicationRecipients==='function')renderCommunicationRecipients();}
-function moveIncompleteJobsToTomorrow(){const data=getScheduleData(),today=getLocalDateString(new Date()),tomorrow=getLocalDateString(addDays(new Date(),1));const keys=Object.keys(data).filter(k=>phaseCDateFromScheduleKey(k)===today&&phaseCNormalizeItem(data[k]).workStatus!=="Completed");if(!keys.length){alert('There are no incomplete jobs to move.');return;}if(!confirm(`Move ${keys.length} incomplete job${keys.length===1?'':'s'} to tomorrow?`))return;keys.forEach(k=>{const time=String(k).split('_')[1];let newKey=`${tomorrow}_${time}`;let n=0;while(data[newKey]){n+=30;const total=(Number(time.slice(0,2))*60+Number(time.slice(2))+n);newKey=`${tomorrow}_${String(Math.floor(total/60)).padStart(2,'0')}${String(total%60).padStart(2,'0')}`;}data[newKey]=data[k];delete data[k];});localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(data));renderSchedule();refreshHomeDashboard();renderPhaseCCommandCenter();alert('Incomplete jobs were moved to tomorrow.');}
-function renderPhaseCCommandCenter(){const host=byId('homeCommandCenter');if(!host)return;const jobs=phaseCTodayJobs(true),incomplete=jobs.filter(x=>x.item.workStatus!=="Completed"),completed=jobs.length-incomplete.length,revenue=jobs.reduce((s,x)=>s+x.revenue,0),alerts=typeof buildCurrentAlerts==='function'?buildCurrentAlerts().length:0;host.innerHTML=`<div class="command-metrics"><div class="command-metric"><span>Scheduled</span><strong>${jobs.length}</strong></div><div class="command-metric"><span>Completed</span><strong>${completed}</strong></div><div class="command-metric"><span>Remaining</span><strong>${incomplete.length}</strong></div><div class="command-metric"><span>Expected Revenue</span><strong>${formatMoney(revenue)}</strong></div></div>${alerts?`<div class="command-alert"><strong>${alerts} item${alerts===1?'':'s'} need attention.</strong></div>`:''}`;}
-const phaseCRefreshHome=refreshHomeDashboard;refreshHomeDashboard=function(){phaseCRefreshHome();renderPhaseCCommandCenter();};
-function initializePhaseC(){renderPhaseCCommandCenter();document.querySelectorAll('[data-tab="scheduleTab"]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{phaseCInitMap();renderPhaseCCommandCenter();},60)));}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initializePhaseC,{once:true});else initializePhaseC();
+function phaseCTimeFromScheduleKey(key){
+  const t=String(key||"").split("_")[1]||"0800";
+  return {hour:Number(t.slice(0,2))||8,minute:Number(t.slice(2,4))||0};
+}
+function phaseCNormalizeItem(item){
+  if(typeof normalizeScheduleItemV37==="function")return {...item,...normalizeScheduleItemV37(item)};
+  return item||{};
+}
+function validRoutePointV319(value){
+  if(Array.isArray(value))value={lat:value[0],lon:value[1]};
+  const lat=Number(value?.lat??value?.latitude);
+  const lon=Number(value?.lon??value?.lng??value?.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat<-90||lat>90||lon<-180||lon>180)return null;
+  return {lat,lon};
+}
+function coordinatesForRecordV319(record,customer,property){
+  const candidates=[
+    record?.coordinates,
+    record,
+    record?.location,
+    property?.coordinates,
+    property,
+    property?.location,
+    customer?.coordinates,
+    customer?.location
+  ];
+  for(const candidate of candidates){
+    const point=validRoutePointV319(candidate);
+    if(point)return point;
+  }
+  return null;
+}
+function phaseCInvoiceForItem(item){
+  return getSavedInvoices().find(x=>x.id===item.recordId||x.jobNumber===item.jobNumber||x.invoiceNumber===item.jobNumber)||null;
+}
+function phaseCCustomerForItem(item,invoice){
+  return readArray(CUSTOMER_STORAGE_KEY).find(x=>x.id===(item.customerId||invoice?.customerId))||null;
+}
+function phaseCPropertyForItem(item,invoice,customer){
+  const address=item.address||invoice?.services?.[0]?.address||"";
+  return customer?.properties?.find(property=>property.address&&property.address===address)||customer?.properties?.[0]||null;
+}
+function phaseCAddressForItem(item){
+  const invoice=phaseCInvoiceForItem(item);
+  const customer=phaseCCustomerForItem(item,invoice);
+  return item.address||invoice?.services?.[0]?.address||invoice?.billingAddress||customer?.properties?.[0]?.address||customer?.billing||"";
+}
+function phaseCRevenueForItem(item){
+  const invoice=phaseCInvoiceForItem(item);
+  return Number(invoice?.total||invoice?.services?.reduce((sum,service)=>sum+Number(service.amount||0),0)||item.amount||0);
+}
+function phaseCTodayJobs(includeCompleted=true){
+  const today=getLocalDateString(new Date());
+  return Object.entries(getScheduleData())
+    .filter(([key])=>phaseCDateFromScheduleKey(key)===today)
+    .map(([key,raw])=>{
+      const item=phaseCNormalizeItem(raw);
+      const invoice=phaseCInvoiceForItem(item);
+      const customer=phaseCCustomerForItem(item,invoice);
+      const property=phaseCPropertyForItem(item,invoice,customer);
+      return {
+        key,
+        item,
+        invoice,
+        customer,
+        property,
+        address:phaseCAddressForItem(item),
+        coordinates:coordinatesForRecordV319(item,customer,property)||coordinatesForRecordV319(invoice,customer,property),
+        revenue:phaseCRevenueForItem(item),
+        time:phaseCTimeFromScheduleKey(key)
+      };
+    })
+    .filter(job=>job.item.customer||job.item.jobNumber||job.item.service||job.item.recordId)
+    .filter(job=>includeCompleted||!["Completed","Cancelled","Canceled"].includes(job.item.workStatus));
+}
+function phaseCFormatDuration(minutes){
+  minutes=Math.max(0,Math.round(minutes||0));
+  return minutes<60?`${minutes} min`:`${Math.floor(minutes/60)} hr ${minutes%60} min`;
+}
+function phaseCInitMap(){
+  if(!byId("routeMap"))return null;
+  if(phaseCRouteMap){
+    window.setTimeout(()=>phaseCRouteMap.invalidateSize(),50);
+    return phaseCRouteMap;
+  }
+  if(typeof L==="undefined"){
+    if(byId("routeStatus"))byId("routeStatus").textContent="The local map library did not load. Route details can still be listed after the application files are repaired.";
+    console.warn("Route map initialization failed: Leaflet library unavailable.");
+    return null;
+  }
+  try{
+    phaseCRouteMap=L.map("routeMap").setView([27.18,-80.25],9);
+    const tiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
+    tiles.on?.("tileerror",()=>console.warn("Route base-map tile could not be loaded."));
+    tiles.addTo(phaseCRouteMap);
+    window.setTimeout(()=>phaseCRouteMap.invalidateSize(),50);
+    return phaseCRouteMap;
+  }catch(error){
+    phaseCRouteMap=null;
+    console.error("Route map initialization failed:",error);
+    return null;
+  }
+}
+function readObjectV319(key){
+  try{
+    const value=JSON.parse(localStorage.getItem(key)||"{}");
+    return value&&typeof value==="object"&&!Array.isArray(value)?value:{};
+  }catch(error){
+    console.warn(`Unable to read ${key}:`,error);
+    return {};
+  }
+}
+function writeObjectV319(key,value){
+  localStorage.setItem(key,JSON.stringify(value));
+}
+function normalizedAddressKeyV319(address){
+  return String(address||"").trim().toLowerCase().replace(/\s+/g," ");
+}
+async function phaseCGeocode(address){
+  const clean=String(address||"").trim();
+  if(!clean)throw new Error("Address is incomplete");
+  const key=normalizedAddressKeyV319(clean);
+  const cache=readObjectV319(ROUTE_GEOCODE_CACHE_KEY_V319);
+  const cached=cache[key];
+  const cachedPoint=validRoutePointV319(cached);
+  if(cachedPoint)return {...cachedPoint,label:cached.label||clean,fromCache:true};
+  const waitFor=Math.max(0,1050-(Date.now()-phaseCLastGeocodeRequestV319));
+  if(waitFor)await new Promise(resolve=>window.setTimeout(resolve,waitFor));
+  phaseCLastGeocodeRequestV319=Date.now();
+  const query=encodeURIComponent(clean);
+  const response=await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=${query}`,{headers:{Accept:"application/json"}});
+  if(!response.ok)throw new Error(`Address lookup failed (${response.status})`);
+  const data=await response.json();
+  const point=validRoutePointV319({lat:data?.[0]?.lat,lon:data?.[0]?.lon});
+  if(!point)throw new Error(`Address not found: ${clean}`);
+  cache[key]={...point,label:data[0].display_name||clean,cachedAt:new Date().toISOString()};
+  const entries=Object.entries(cache).slice(-100);
+  writeObjectV319(ROUTE_GEOCODE_CACHE_KEY_V319,Object.fromEntries(entries));
+  return {...point,label:cache[key].label,fromCache:false};
+}
+function phaseCDistance(a,b){
+  const R=3958.8;
+  const radians=Math.PI/180;
+  const dLat=(b.lat-a.lat)*radians;
+  const dLon=(b.lon-a.lon)*radians;
+  const value=Math.sin(dLat/2)**2+Math.cos(a.lat*radians)*Math.cos(b.lat*radians)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(value));
+}
+function routeManualOrderV319(stop){
+  const value=Number(stop.item.routeOrder??stop.item.manualOrder);
+  return Number.isFinite(value)&&value>0?Math.round(value)-1:null;
+}
+function routeIsFixedV319(stop){
+  return routeManualOrderV319(stop)!==null||Boolean(
+    stop.item.routeLocked||
+    stop.item.locked||
+    stop.item.appointmentLocked||
+    stop.item.appointmentWindow||
+    stop.item.windowStart||
+    stop.item.windowEnd
+  );
+}
+function phaseCNearestOrder(stops,start=PHASE_C_HOME_BASE){
+  const original=[...stops].sort((a,b)=>a.key.localeCompare(b.key));
+  const fixed=new Map();
+  const remaining=[];
+  original.forEach((stop,index)=>{
+    if(!routeIsFixedV319(stop)){
+      remaining.push(stop);
+      return;
+    }
+    let position=routeManualOrderV319(stop);
+    if(position===null)position=index;
+    position=Math.max(0,Math.min(original.length-1,position));
+    while(fixed.has(position)&&position<original.length-1)position+=1;
+    while(fixed.has(position)&&position>0)position-=1;
+    fixed.set(position,stop);
+  });
+  const ordered=[];
+  let cursor=start;
+  for(let position=0;position<original.length;position+=1){
+    let next=fixed.get(position);
+    if(!next){
+      const urgent=remaining.filter(stop=>stop.item.urgent||stop.item.priority==="Urgent");
+      const candidates=urgent.length?urgent:remaining;
+      let best=candidates[0];
+      let distance=Infinity;
+      candidates.forEach(candidate=>{
+        const nextDistance=phaseCDistance(cursor,candidate);
+        if(nextDistance<distance){
+          distance=nextDistance;
+          best=candidate;
+        }
+      });
+      next=best;
+      const remainingIndex=remaining.indexOf(next);
+      if(remainingIndex>=0)remaining.splice(remainingIndex,1);
+    }
+    if(next){
+      ordered.push(next);
+      cursor=next;
+    }
+  }
+  return ordered;
+}
+async function phaseCFetchRoute(points){
+  const coordinates=points.map(point=>`${point.lon},${point.lat}`).join(";");
+  const response=await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`);
+  if(!response.ok)throw new Error(`Routing service failed (${response.status})`);
+  const data=await response.json();
+  if(data.code!=="Ok"||!data.routes?.[0])throw new Error("No drivable route was returned.");
+  return {...data.routes[0],approximate:false};
+}
+function phaseCFallbackRouteV319(points){
+  let miles=0;
+  for(let index=1;index<points.length;index+=1)miles+=phaseCDistance(points[index-1],points[index]);
+  return {
+    geometry:{type:"LineString",coordinates:points.map(point=>[point.lon,point.lat])},
+    distance:miles*1609.344,
+    duration:(miles/28)*3600,
+    approximate:true
+  };
+}
+function routeStartMessageV319(message,isError=false){
+  const element=byId("routeStartStatus");
+  if(!element)return;
+  element.textContent=message;
+  element.classList.toggle("is-error",Boolean(isError));
+}
+function routeCurrentPositionV319(){
+  return new Promise((resolve,reject)=>{
+    const localHost=["localhost","127.0.0.1"].includes(location.hostname);
+    if(window.isSecureContext===false&&!localHost){
+      reject(new Error("Current location requires HTTPS, localhost, or Live Server."));
+      return;
+    }
+    if(!navigator.geolocation?.getCurrentPosition){
+      reject(new Error("This browser does not provide current location."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(position=>{
+      const point=validRoutePointV319(position?.coords);
+      const timestamp=Number(position?.timestamp)||Date.now();
+      const age=Date.now()-timestamp;
+      if(!point){
+        reject(new Error("The browser returned invalid coordinates."));
+        return;
+      }
+      if(age>ROUTE_LOCATION_MAX_AGE_V319){
+        reject(new Error("The browser returned an old location. Select Refresh Location & Route to try again."));
+        return;
+      }
+      const accuracy=Number(position.coords.accuracy);
+      const distanceFromServiceArea=phaseCDistance(point,PHASE_C_HOME_BASE);
+      if(distanceFromServiceArea>150&&!confirm(`Your detected location appears to be about ${Math.round(distanceFromServiceArea)} miles from the Paradise Lawn Care service area. Use it as the route start?`)){
+        reject(new Error("The detected location was outside the service area and was not selected."));
+        return;
+      }
+      resolve({
+        ...point,
+        name:"Current Location",
+        source:"current",
+        accuracy:Number.isFinite(accuracy)&&accuracy>=0?accuracy:null,
+        obtainedAt:new Date(timestamp).toISOString()
+      });
+    },error=>{
+      const messages={
+        1:"Location permission was denied.",
+        2:"Current location is unavailable.",
+        3:"The current-location request timed out."
+      };
+      reject(new Error(messages[error?.code]||"Current location could not be obtained."));
+    },{enableHighAccuracy:true,timeout:9000,maximumAge:0});
+  });
+}
+async function routeManualStartV319(address,savePreferred=false){
+  const located=await phaseCGeocode(address);
+  const start={...located,name:`Manual Start: ${address}`,address,source:"manual"};
+  if(savePreferred){
+    writeObjectV319(ROUTE_START_STORAGE_KEY_V319,{address,...validRoutePointV319(start),savedAt:new Date().toISOString()});
+  }
+  return start;
+}
+function savedRouteStartV319(){
+  const saved=readObjectV319(ROUTE_START_STORAGE_KEY_V319);
+  const point=validRoutePointV319(saved);
+  return saved.address&&point?{...point,address:saved.address,name:`Preferred Start: ${saved.address}`,source:"saved"}:null;
+}
+async function resolveRouteStartV319(){
+  const mode=byId("routeStartMode")?.value||"current";
+  const manualAddress=byId("routeStartAddress")?.value.trim()||"";
+  if(mode==="business"){
+    routeStartMessageV319("Using the Paradise Lawn Care business location as the route start.");
+    return {...PHASE_C_HOME_BASE};
+  }
+  if(mode==="manual"){
+    if(!manualAddress)throw new Error("Enter a complete manual starting address.");
+    routeStartMessageV319("Locating the manual route starting address...");
+    const start=await routeManualStartV319(manualAddress,Boolean(byId("routeSaveStart")?.checked));
+    routeStartMessageV319(byId("routeSaveStart")?.checked?"Manual route start located and saved as the preferred start.":"Manual route start located.");
+    return start;
+  }
+  routeStartMessageV319("Requesting your current location to determine the most practical starting point. It is used only for this route.");
+  try{
+    const current=await routeCurrentPositionV319();
+    const accuracy=current.accuracy==null?"":` Approximate accuracy: ${current.accuracy<1000?`${Math.round(current.accuracy)} m`:`${(current.accuracy/1609.344).toFixed(1)} mi`}.`;
+    routeStartMessageV319(`Current location detected at ${new Date(current.obtainedAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}.${accuracy}`);
+    return current;
+  }catch(error){
+    console.warn("Route location fallback:",error.message);
+    if(manualAddress){
+      const manual=await routeManualStartV319(manualAddress,Boolean(byId("routeSaveStart")?.checked));
+      routeStartMessageV319(`${error.message} Using the entered manual starting address instead.`);
+      return manual;
+    }
+    const saved=savedRouteStartV319();
+    if(saved){
+      routeStartMessageV319(`${error.message} Using the saved preferred route start instead.`);
+      return saved;
+    }
+    routeStartMessageV319(`${error.message} Using the Paradise Lawn Care business location instead.`);
+    return {...PHASE_C_HOME_BASE};
+  }
+}
+function routeStopRecordV319(stop){
+  return allScheduleJobsV37().find(record=>
+    (stop.item.recordId&&record.recordId===stop.item.recordId)||
+    (stop.item.jobId&&record.jobId===stop.item.jobId)||
+    (stop.item.jobNumber&&record.jobId===stop.item.jobNumber)
+  )||null;
+}
+function routeNumberedIconV319(index){
+  return typeof L?.divIcon==="function"?L.divIcon({className:"route-numbered-icon",html:String(index),iconSize:[30,30],iconAnchor:[15,15]}):undefined;
+}
+function routeStartIconV319(){
+  return typeof L?.divIcon==="function"?L.divIcon({className:"route-start-icon",html:"START",iconSize:[42,42],iconAnchor:[21,21]}):undefined;
+}
+function selectRouteStopV319(index){
+  const stop=phaseCActiveStopsV319[index];
+  if(!stop)return;
+  document.querySelectorAll("#routeStopList .route-stop").forEach((button,buttonIndex)=>button.classList.toggle("is-selected",buttonIndex===index));
+  const marker=phaseCRouteStopMarkersV319[index];
+  marker?.openPopup?.();
+  phaseCRouteMap?.panTo?.([stop.lat,stop.lon]);
+  const record=routeStopRecordV319(stop);
+  if(record)showScheduleCustomerCardV36(record,stop.key);
+}
+function renderPhaseCRoute(stops,route,startPoint){
+  const map=phaseCInitMap();
+  phaseCActiveStopsV319=stops;
+  phaseCActiveStartV319=startPoint;
+  if(map){
+    if(phaseCRouteLayer)map.removeLayer(phaseCRouteLayer);
+    phaseCRouteMarkers.forEach(marker=>map.removeLayer(marker));
+    phaseCRouteMarkers=[];
+    phaseCRouteStopMarkersV319=[];
+    if(route.geometry)phaseCRouteLayer=L.geoJSON(route.geometry,{style:{color:route.approximate?"#b57d1b":"#2f6b3f",weight:5,opacity:.85,dashArray:route.approximate?"8 7":null}}).addTo(map);
+    const startOptions={};
+    const startIcon=routeStartIconV319();
+    if(startIcon)startOptions.icon=startIcon;
+    const startMarker=L.marker([startPoint.lat,startPoint.lon],startOptions).addTo(map).bindPopup(`<strong>${escapeHtml(startPoint.name||"Route Start")}</strong>`);
+    phaseCRouteMarkers.push(startMarker);
+    stops.forEach((stop,index)=>{
+      const markerOptions={};
+      const icon=routeNumberedIconV319(index+1);
+      if(icon)markerOptions.icon=icon;
+      const marker=L.marker([stop.lat,stop.lon],markerOptions).addTo(map).bindPopup(`<strong>${index+1}. ${escapeHtml(stop.item.customer||stop.customer?.name||stop.item.jobNumber||"Job")}</strong><br>${escapeHtml(stop.address)}`);
+      marker.on?.("click",()=>selectRouteStopV319(index));
+      phaseCRouteMarkers.push(marker);
+      phaseCRouteStopMarkersV319.push(marker);
+    });
+    if(phaseCRouteLayer?.getBounds)map.fitBounds(phaseCRouteLayer.getBounds(),{padding:[25,25]});
+  }
+  let elapsed=0;
+  const serviceMinutes=60;
+  const routeStartTime=new Date();
+  const eachDrive=(route.duration/60)/Math.max(1,stops.length);
+  byId("routeStopList").innerHTML=stops.map((stop,index)=>{
+    elapsed+=eachDrive;
+    const arrival=new Date(routeStartTime.getTime()+elapsed*60000);
+    elapsed+=serviceMinutes;
+    const label=arrival.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+    return `<button type="button" class="route-stop" data-route-index="${index}"><span class="route-stop-number">${index+1}</span><div><strong>${escapeHtml(stop.item.customer||stop.customer?.name||stop.item.jobNumber||"Scheduled Job")}</strong><span>${escapeHtml(stop.item.service||stop.invoice?.services?.[0]?.service||"Lawn service")}</span><small>${escapeHtml(stop.address)}</small></div><span class="route-stop-time">${label}</span></button>`;
+  }).join("");
+  byId("routeStopList")?.querySelectorAll("[data-route-index]").forEach((button)=>{
+    button.addEventListener("click",()=>selectRouteStopV319(Number(button.dataset.routeIndex)));
+  });
+  const miles=route.distance/1609.344;
+  const driveMinutes=route.duration/60;
+  const revenue=stops.reduce((sum,stop)=>sum+stop.revenue,0);
+  const finish=new Date(routeStartTime.getTime()+(driveMinutes+stops.length*serviceMinutes)*60000);
+  byId("routeJobCount").textContent=stops.length;
+  byId("routeMiles").textContent=`${miles.toFixed(1)} mi${route.approximate?"*":""}`;
+  byId("routeDriveTime").textContent=`${phaseCFormatDuration(driveMinutes)}${route.approximate?"*":""}`;
+  byId("routeRevenue").textContent=formatMoney(revenue);
+  byId("routeFinish").textContent=finish.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+}
+async function buildTodayRoute(){
+  const status=byId("routeStatus");
+  const jobs=phaseCTodayJobs(false);
+  if(!jobs.length){
+    clearRouteCenter();
+    status.textContent="No incomplete, active jobs are saved for today.";
+    renderPhaseCCommandCenter();
+    return false;
+  }
+  status.textContent=`Preparing ${jobs.length} active job${jobs.length===1?"":"s"}...`;
+  try{
+    const startPoint=await resolveRouteStartV319();
+    const located=[];
+    const skipped=[];
+    for(const job of jobs){
+      if(job.coordinates){
+        located.push({...job,...job.coordinates});
+        continue;
+      }
+      if(!job.address){
+        skipped.push(job);
+        continue;
+      }
+      try{
+        located.push({...job,...await phaseCGeocode(job.address)});
+      }catch(error){
+        skipped.push(job);
+        console.warn(`Route address lookup failed for ${job.item.jobNumber||job.key}:`,error.message);
+      }
+    }
+    if(!located.length)throw new Error("No active job has a complete address or valid saved coordinates.");
+    const ordered=phaseCNearestOrder(located,startPoint);
+    status.textContent="Building the driving route...";
+    let route;
+    let routingWarning="";
+    try{
+      route=await phaseCFetchRoute([startPoint,...ordered]);
+    }catch(error){
+      route=phaseCFallbackRouteV319([startPoint,...ordered]);
+      routingWarning=" The driving service was unavailable, so mileage and time are straight-line estimates marked with an asterisk.";
+      console.warn("Route service fallback:",error.message);
+    }
+    renderPhaseCRoute(ordered,route,startPoint);
+    const skippedMessage=skipped.length?` ${skipped.length} job${skipped.length===1?" was":"s were"} omitted because the address could not be located.`:"";
+    status.textContent=`Route built from ${startPoint.name||"Route Start"} for ${ordered.length} stop${ordered.length===1?"":"s"}.${skippedMessage}${routingWarning}`;
+    return true;
+  }catch(error){
+    clearRouteCenter();
+    status.textContent=`Unable to build route: ${error.message}`;
+    console.error("Route build failed:",error);
+    return false;
+  }
+}
+function clearRouteCenter(){
+  if(phaseCRouteMap){
+    if(phaseCRouteLayer){
+      phaseCRouteMap.removeLayer(phaseCRouteLayer);
+      phaseCRouteLayer=null;
+    }
+    phaseCRouteMarkers.forEach(marker=>phaseCRouteMap.removeLayer(marker));
+    phaseCRouteMarkers=[];
+    phaseCRouteStopMarkersV319=[];
+    if(scheduleSelectionMarkerV319){
+      phaseCRouteMap.removeLayer(scheduleSelectionMarkerV319);
+      scheduleSelectionMarkerV319=null;
+    }
+  }
+  phaseCActiveStopsV319=[];
+  phaseCActiveStartV319=null;
+  ["routeJobCount","routeMiles","routeDriveTime","routeRevenue","routeFinish"].forEach((id,index)=>{
+    if(byId(id))byId(id).textContent=["0","--","--","$0.00","--"][index];
+  });
+  if(byId("routeStopList"))byId("routeStopList").innerHTML='<p class="empty-message">No route built yet.</p>';
+}
+function openSchedulePropertyMapV319(){
+  const details=activeScheduleDetailsV319;
+  if(!details)return;
+  const point=validRoutePointV319(details.coordinates);
+  const query=point?`${point.lat},${point.lon}`:details.address;
+  if(!query){
+    alert("This property needs a complete service address before it can be opened on a map.");
+    return;
+  }
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,"_blank","noopener");
+}
+async function showSchedulePropertyOnRouteMapV319(){
+  const details=activeScheduleDetailsV319;
+  if(!details)return;
+  if(!details.address&&!validRoutePointV319(details.coordinates)){
+    alert("This property needs a complete service address before it can be shown on the map.");
+    return;
+  }
+  const map=phaseCInitMap();
+  if(!map){
+    alert("The route map is unavailable. You can still use Open Maps.");
+    return;
+  }
+  try{
+    const point=validRoutePointV319(details.coordinates)||await phaseCGeocode(details.address);
+    details.coordinates=point;
+    if(scheduleSelectionMarkerV319)map.removeLayer(scheduleSelectionMarkerV319);
+    const options={};
+    if(typeof L.divIcon==="function")options.icon=L.divIcon({className:"schedule-map-icon",html:"JOB",iconSize:[34,34],iconAnchor:[17,17]});
+    scheduleSelectionMarkerV319=L.marker([point.lat,point.lon],options).addTo(map).bindPopup(`<strong>${escapeHtml(details.record.customer||"Selected Job")}</strong><br>${escapeHtml(details.address)}`);
+    scheduleSelectionMarkerV319.openPopup?.();
+    map.setView([point.lat,point.lon],14);
+    byId("routeStatus").textContent=`Showing ${details.record.customer||"the selected job"} at ${details.address}.`;
+  }catch(error){
+    alert(`The property location could not be opened: ${error.message}`);
+  }
+}
+function textScheduleCustomerV319(){
+  const details=activeScheduleDetailsV319;
+  if(!details)return false;
+  const record=details.record;
+  const when=details.slotKey?`${formatDateLong(scheduleDateFromKeyV37(details.slotKey))} at ${timeLabel(phaseCTimeFromScheduleKey(details.slotKey).hour,phaseCTimeFromScheduleKey(details.slotKey).minute)}`:"the scheduled time";
+  return launchTextV319(record.phone||details.customer?.phone,`Hello ${record.customer||"Customer"}, this is Paradise Lawn Care regarding your service scheduled for ${when}. Please contact us if you have any questions.`,`${record.customer||"This customer"} does not have a valid phone number saved.`);
+}
+function emailScheduleCustomerV319(){
+  const details=activeScheduleDetailsV319;
+  if(!details)return false;
+  const record=details.record;
+  const when=details.slotKey?`${formatDateLong(scheduleDateFromKeyV37(details.slotKey))} at ${timeLabel(phaseCTimeFromScheduleKey(details.slotKey).hour,phaseCTimeFromScheduleKey(details.slotKey).minute)}`:"the scheduled time";
+  return launchEmailV319(record.email||details.customer?.email,"Paradise Lawn Care Service Schedule",`Hello ${record.customer||"Customer"},\n\nThis is Paradise Lawn Care regarding your service scheduled for ${when}. Please contact us if you have any questions.\n\nThank you.`,`${record.customer||"This customer"} does not have a valid email address saved.`);
+}
+function prepareRunningLateNotices(){
+  const jobs=phaseCTodayJobs(false);
+  if(!jobs.length){
+    alert("There are no incomplete jobs today.");
+    return;
+  }
+  communicationSelectedCustomerIds.clear();
+  jobs.forEach(job=>{
+    const customerId=job.item?.customerId||phaseCCustomerForItem(job.item,phaseCInvoiceForItem(job.item))?.id;
+    if(customerId)communicationSelectedCustomerIds.add(customerId);
+  });
+  openDashboardSection("communicationTab");
+  if(byId("communicationAudience"))byId("communicationAudience").value="selected";
+  if(byId("communicationSubject"))byId("communicationSubject").value="Paradise Lawn Care Schedule Update";
+  if(byId("communicationBody"))byId("communicationBody").value="Paradise Lawn Care is running behind schedule today. We are still planning to service your property and will arrive as soon as possible. Thank you for your patience.";
+  if(typeof renderCommunicationRecipients==="function")renderCommunicationRecipients();
+}
+function moveIncompleteJobsToTomorrow(){
+  const data=getScheduleData();
+  const today=getLocalDateString(new Date());
+  const tomorrow=getLocalDateString(addDays(new Date(),1));
+  const keys=Object.keys(data).filter(key=>phaseCDateFromScheduleKey(key)===today&&!["Completed","Cancelled","Canceled"].includes(phaseCNormalizeItem(data[key]).workStatus));
+  if(!keys.length){
+    alert("There are no incomplete jobs to move.");
+    return;
+  }
+  if(!confirm(`Move ${keys.length} incomplete job${keys.length===1?"":"s"} to tomorrow?`))return;
+  keys.forEach(key=>{
+    const time=String(key).split("_")[1];
+    let newKey=`${tomorrow}_${time}`;
+    let offset=0;
+    while(data[newKey]){
+      offset+=30;
+      const total=Number(time.slice(0,2))*60+Number(time.slice(2))+offset;
+      newKey=`${tomorrow}_${String(Math.floor(total/60)).padStart(2,"0")}${String(total%60).padStart(2,"0")}`;
+    }
+    data[newKey]=data[key];
+    delete data[key];
+  });
+  localStorage.setItem(SCHEDULE_STORAGE_KEY,JSON.stringify(data));
+  renderSchedule();
+  refreshHomeDashboard();
+  renderPhaseCCommandCenter();
+  alert("Incomplete jobs were moved to tomorrow.");
+}
+function renderPhaseCCommandCenter(){
+  const host=byId("homeCommandCenter");
+  if(!host)return;
+  const jobs=phaseCTodayJobs(true);
+  const completed=jobs.filter(job=>job.item.workStatus==="Completed").length;
+  const incomplete=jobs.filter(job=>!["Completed","Cancelled","Canceled"].includes(job.item.workStatus));
+  const revenue=jobs.reduce((sum,job)=>sum+job.revenue,0);
+  const alerts=typeof buildCurrentAlerts==="function"?buildCurrentAlerts().length:0;
+  host.innerHTML=`<div class="command-metrics"><div class="command-metric"><span>Scheduled</span><strong>${jobs.length}</strong></div><div class="command-metric"><span>Completed</span><strong>${completed}</strong></div><div class="command-metric"><span>Remaining</span><strong>${incomplete.length}</strong></div><div class="command-metric"><span>Expected Revenue</span><strong>${formatMoney(revenue)}</strong></div></div>${alerts?`<div class="command-alert"><strong>${alerts} item${alerts===1?"":"s"} need attention.</strong></div>`:""}`;
+}
+function getRouteStateV319(){
+  return {
+    start:phaseCActiveStartV319?{...phaseCActiveStartV319}:null,
+    stopCount:phaseCActiveStopsV319.length,
+    stopMarkerCount:phaseCRouteStopMarkersV319.length
+  };
+}
+function bindStaticClickV319(id,handler){
+  const element=byId(id);
+  if(!element||element.dataset.v319Bound==="true")return;
+  element.dataset.v319Bound="true";
+  element.addEventListener("click",handler);
+}
+function initializeDirectActionsV319(){
+  bindStaticClickV319("invoiceEmailAction",emailInvoice);
+  bindStaticClickV319("invoiceTextAction",textInvoice);
+  bindStaticClickV319("viewInvoicePdfButton",viewInvoicePdf);
+  bindStaticClickV319("quoteEmailAction",emailQuote);
+  bindStaticClickV319("quoteTextAction",textQuote);
+  bindStaticClickV319("customerEmailAction",emailCustomer);
+  bindStaticClickV319("customerTextAction",textCustomer);
+  bindStaticClickV319("scheduleShowMapButton",showSchedulePropertyOnRouteMapV319);
+  bindStaticClickV319("scheduleOpenMapsButton",openSchedulePropertyMapV319);
+  bindStaticClickV319("scheduleTextCustomerButton",textScheduleCustomerV319);
+  bindStaticClickV319("scheduleEmailCustomerButton",emailScheduleCustomerV319);
+  bindStaticClickV319("scheduleBuildRouteButton",buildTodayRoute);
+  bindStaticClickV319("buildTodayRouteButton",buildTodayRoute);
+  bindStaticClickV319("routeRefreshLocationButton",buildTodayRoute);
+  bindStaticClickV319("radarRefreshButton",refreshRadarV319);
+  bindStaticClickV319("printInvoicePreviewButton",printInvoicePreview);
+}
+const phaseCRefreshHome=refreshHomeDashboard;
+refreshHomeDashboard=function(){
+  phaseCRefreshHome();
+  renderPhaseCCommandCenter();
+};
+function initializePhaseC(){
+  const saved=savedRouteStartV319();
+  if(saved&&byId("routeStartAddress"))byId("routeStartAddress").value=saved.address;
+  byId("routeStartMode")?.addEventListener("change",event=>{
+    if(event.target.value==="current")routeStartMessageV319("Current location will be requested only when you build or refresh the route.");
+    if(event.target.value==="manual")routeStartMessageV319("Enter a starting address. It is saved only if you select Remember this manual address.");
+    if(event.target.value==="business")routeStartMessageV319("The route will begin at the Paradise Lawn Care business location.");
+  });
+  initializeDirectActionsV319();
+  wireScheduleInteractionsV319();
+  renderPhaseCCommandCenter();
+  document.querySelectorAll('[data-tab="scheduleTab"]').forEach(button=>button.addEventListener("click",()=>window.setTimeout(()=>{
+    phaseCInitMap();
+    renderPhaseCCommandCenter();
+  },60)));
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initializePhaseC,{once:true});
+else initializePhaseC();
 
 /* Paradise Lawn Care Operations Suite v3.19 - Complete touch quote workflow */
 function quoteCustomersV318(){return readArray(CUSTOMER_STORAGE_KEY);}

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Paradise Lawn Care Operations Suite v3.19</title>
-  <link rel="stylesheet" href="style.css?v=3.19.1">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css?v=3.19.2">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4">
 </head>
 <body>
   <div class="app">
@@ -23,7 +23,7 @@
     </nav>
 
     <div class="header">
-      <div class="brand-logo-wrap"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/logo.png" alt="Paradise Lawn Care Logo" class="logo"></div>
+      <div class="brand-logo-wrap"><img src="images/paradise-logo.svg" alt="Paradise Lawn Care, LLC logo" class="logo"></div>
       <div class="company-info">
         <h1>Paradise Lawn Care, LLC</h1>
         <h2>We Make Your Lawn Paradise Perfect.</h2><p class="build-label">Operations Suite v3.19 — Preferred Contact &amp; Smoke Signal</p>
@@ -31,7 +31,7 @@
         <p>✉ ParadiseLawncare772@gmail.com</p>
         <p>📍 5685 SE Ault Ave., Suite 1<br>Stuart, FL 34997</p>
       </div>
-      <div class="grass"><img src="https://tomt-goldcoast.github.io/paradise-invoice/images/grass.png" alt="Grass"></div>
+      <div class="grass"><img src="images/grass.svg" alt="Paradise Lawn Care grass artwork"></div>
     </div>
 
     <main>
@@ -72,9 +72,9 @@
           <button type="button" onclick="newInvoice()">New Invoice</button>
           <button type="button" onclick="saveInvoice()">Save Invoice</button>
           <button type="button" onclick="openInvoiceFinder()">Invoice Finder</button>
-          <button type="button" id="invoiceEmailAction" onclick="emailInvoice()">Email</button>
-          <button type="button" id="invoiceTextAction" onclick="textInvoice()">Text</button>
-          <button type="button" onclick="viewInvoicePdf()">View PDF</button>
+          <button type="button" id="invoiceEmailAction">Email</button>
+          <button type="button" id="invoiceTextAction">Text</button>
+          <button type="button" id="viewInvoicePdfButton">View PDF</button>
         </div>
 
         <div class="section row">
@@ -144,7 +144,7 @@
       </section>
 
       <section id="quoteTab" class="tab-panel">
-        <div class="module-heading"><div><h2>Quote Builder</h2><p>Create, save, search, and convert estimates into invoices.</p></div><div class="compact-actions"><button type="button" onclick="newQuote()">New Quote</button><button type="button" onclick="saveQuote()">Save Quote</button><button type="button" onclick="convertQuoteToInvoice()">Convert to Invoice</button></div></div>
+        <div class="module-heading"><div><h2>Quote Builder</h2><p>Create, save, search, and convert estimates into invoices.</p></div><div class="compact-actions"><button type="button" onclick="newQuote()">New Quote</button><button type="button" onclick="saveQuote()">Save Quote</button><button type="button" id="quoteEmailAction">Email Quote</button><button type="button" id="quoteTextAction">Text Quote</button><button type="button" onclick="convertQuoteToInvoice()">Convert to Invoice</button></div></div>
         <div class="section row"><div><label>Quote Number</label><input id="quoteNumber" readonly></div><div><label>Quote Date</label><input id="quoteDate" type="date"></div><div><label>Valid Through</label><input id="quoteValidThrough" type="date"></div><div><label>Status</label><select id="quoteStatus"><option>Draft</option><option>Sent</option><option>Accepted</option><option>Declined</option></select></div></div>
         <div class="section quote-customer-section">
           <h3>Customer &amp; Property</h3>
@@ -190,10 +190,33 @@
           <div><span>Customer ID</span><strong id="scheduleSelectedCustomerId">—</strong></div>
           <div><span>Address</span><strong id="scheduleSelectedAddress">—</strong></div>
           <div><span>Phone</span><strong id="scheduleSelectedPhone">—</strong></div>
-          <button type="button" class="secondary-button" onclick="clearScheduleSelection()">Clear</button>
+          <div id="scheduleSelectedDetails" class="schedule-selected-details"></div>
+          <div class="schedule-customer-actions">
+            <button type="button" id="scheduleShowMapButton">Show on Map</button>
+            <button type="button" id="scheduleOpenMapsButton">Open Maps</button>
+            <button type="button" id="scheduleTextCustomerButton">Text Customer</button>
+            <button type="button" id="scheduleEmailCustomerButton">Email Customer</button>
+            <button type="button" id="scheduleBuildRouteButton">Build Route</button>
+            <button type="button" class="secondary-button" onclick="clearScheduleSelection()">Clear</button>
+          </div>
         </div>
         <section class="section route-center-panel">
-          <div class="module-heading"><div><h3>Route &amp; Schedule Center</h3><p>Build today's route, estimate drive time and revenue, and prepare late-arrival notices.</p></div><div class="compact-actions"><button type="button" onclick="buildTodayRoute()">Build Today's Route</button><button type="button" class="secondary-button" onclick="clearRouteCenter()">Clear Route</button></div></div>
+          <div class="module-heading"><div><h3>Route &amp; Schedule Center</h3><p>Build today's route, estimate drive time and revenue, and prepare late-arrival notices.</p></div><div class="compact-actions"><button type="button" id="buildTodayRouteButton">Build Today's Route</button><button type="button" class="secondary-button" onclick="clearRouteCenter()">Clear Route</button></div></div>
+          <div class="route-start-controls">
+            <label>Starting Point
+              <select id="routeStartMode">
+                <option value="current">Current Location</option>
+                <option value="manual">Manual Address</option>
+                <option value="business">Paradise Lawn Care Business</option>
+              </select>
+            </label>
+            <label>Manual Starting Address
+              <input id="routeStartAddress" placeholder="Address, city, state, ZIP" autocomplete="street-address">
+            </label>
+            <label class="route-save-start"><input id="routeSaveStart" type="checkbox"> Remember this manual address as the preferred route start</label>
+            <button type="button" id="routeRefreshLocationButton" class="secondary-button">Refresh Location &amp; Route</button>
+          </div>
+          <p id="routeStartStatus" class="route-start-status small-note" aria-live="polite">Current location is requested only when you build or refresh a route.</p>
           <div id="routeStats" class="route-stat-grid">
             <div class="route-stat"><span>Jobs</span><strong id="routeJobCount">0</strong></div>
             <div class="route-stat"><span>Drive Miles</span><strong id="routeMiles">--</strong></div>
@@ -226,6 +249,10 @@
             <div class="customer-preferred-contact">
               <label id="customerPreferredContactLabel" for="customerPreferredContact">Preferred Contact Method</label>
               <select id="customerPreferredContact" class="preferred-contact" aria-labelledby="customerPreferredContactLabel"><option>Phone</option><option>Text</option><option>Email</option><option>Smoke Signal</option></select>
+            </div>
+            <div class="individual-contact-actions">
+              <button type="button" id="customerTextAction">Text Customer</button>
+              <button type="button" id="customerEmailAction">Email Customer</button>
             </div>
             <label>Billing Address</label><input id="customerBilling">
             <div class="billing-settings">
@@ -277,7 +304,7 @@
           <div class="metric-card"><span>Alerts</span><strong id="weatherAlertCount">0</strong><small>Three-county service area</small></div>
         </div>
         <div class="weather-layout">
-          <section class="section weather-radar-panel"><div class="module-heading"><div><h3>Live Animated Radar</h3><p>Centered from Fort Pierce through Jupiter and Palm Beach Gardens.</p></div><div class="radar-controls"><button type="button" id="radarPlayButton" onclick="toggleRadarAnimation()">Pause</button><span id="radarTimeLabel">Loading radar...</span></div></div><div id="weatherRadarMap" aria-label="Animated weather radar map for the Paradise Lawn Care service area"></div><p class="small-note">Radar tiles require an internet connection. Use zoom and drag to inspect approaching storms.</p></section>
+          <section class="section weather-radar-panel"><div class="module-heading"><div><h3>Live Animated Radar</h3><p>Centered from Fort Pierce through Jupiter and Palm Beach Gardens.</p></div><div class="radar-controls"><button type="button" id="radarPlayButton" onclick="toggleRadarAnimation()">Pause</button><button type="button" id="radarRefreshButton" class="secondary-button">Refresh Radar</button><span id="radarTimeLabel">Loading radar...</span></div></div><div id="weatherRadarMap" aria-label="Animated weather radar map for the Paradise Lawn Care service area"></div><p id="radarStatus" class="radar-status small-note" aria-live="polite">Open the Weather tab to load radar.</p><p class="small-note">Radar tiles require an internet connection. Use zoom and drag to inspect approaching storms.</p></section>
           <section class="section"><h3>Service Area Forecast</h3><div class="weather-location-buttons"><button type="button" onclick="selectWeatherLocation('Fort Pierce',27.4467,-80.3256)">Fort Pierce</button><button type="button" onclick="selectWeatherLocation('Port St. Lucie',27.2730,-80.3582)">Port St. Lucie</button><button type="button" onclick="selectWeatherLocation('Stuart',27.1975,-80.2528)">Stuart</button><button type="button" onclick="selectWeatherLocation('Hobe Sound',27.0595,-80.1364)">Hobe Sound</button><button type="button" onclick="selectWeatherLocation('Jupiter',26.9342,-80.0942)">Jupiter</button><button type="button" onclick="selectWeatherLocation('Palm Beach Gardens',26.8234,-80.1387)">Palm Beach Gardens</button></div><div id="weatherForecastList" class="weather-forecast-list"></div><h3>Active Weather Alerts</h3><div id="weatherAlertsList" class="weather-alert-list"><p class="empty-message">No alerts loaded.</p></div></section>
         </div>
       </section>
@@ -330,7 +357,7 @@
     <div class="modal-card pdf-modal-card">
       <div class="modal-header"><h2>Invoice PDF Preview</h2><button type="button" class="close-button" onclick="closePdfPreview()">×</button></div>
       <div id="pdfPreview" class="pdf-preview"></div>
-      <div class="pdf-actions"><button type="button" onclick="printInvoicePreview()">Print / Save as PDF</button></div>
+      <div class="pdf-actions"><button type="button" id="printInvoicePreviewButton">Print / Save as PDF</button></div>
     </div>
   </div>
 
@@ -387,8 +414,8 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="script.js?v=3.19.1"></script>
+  <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
+  <script src="script.js?v=3.19.2"></script>
   <div class="yard-animation"><div class="grass-line"></div><div class="yard-worker mower">🚜</div><div class="yard-worker trimmer">🧍‍♂️🌿</div><div class="yard-worker blower">🧍‍♂️💨🍂</div></div>
 
   <div id="billingCenterModal" class="modal" hidden>
