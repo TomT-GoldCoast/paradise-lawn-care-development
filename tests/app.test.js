@@ -12,7 +12,109 @@ const style = fs.readFileSync(path.join(root, "style.css"), "utf8");
 
 const wait = (milliseconds = 80) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function createApp({ height = 900, online = true, width = 1440, youtube = false } = {}) {
+function createLeafletStub() {
+  const state = {
+    invalidateCalls: 0,
+    layers: [],
+    mapCount: 0,
+    maps: [],
+    panCalls: [],
+    setViewCalls: []
+  };
+  function makeLayer(type, details = {}) {
+    const handlers = new Map();
+    const layer = {
+      ...details,
+      type,
+      addTo(map) {
+        this.map = map;
+        map.layers.push(this);
+        state.layers.push(this);
+        return this;
+      },
+      bindPopup(content) {
+        this.popup = content;
+        return this;
+      },
+      bindTooltip(content) {
+        this.tooltip = content;
+        return this;
+      },
+      fire(eventName) {
+        (handlers.get(eventName) || []).forEach((handler) => handler({ target: this }));
+        return this;
+      },
+      getBounds() {
+        return [[26.8, -80.5], [27.5, -80.0]];
+      },
+      on(eventName, handler) {
+        handlers.set(eventName, [...(handlers.get(eventName) || []), handler]);
+        return this;
+      },
+      once(eventName, handler) {
+        const wrapped = (event) => {
+          handlers.set(eventName, (handlers.get(eventName) || []).filter((item) => item !== wrapped));
+          handler(event);
+        };
+        return this.on(eventName, wrapped);
+      },
+      openPopup() {
+        this.popupOpened = true;
+        return this;
+      },
+      setOpacity(value) {
+        this.opacity = value;
+        return this;
+      }
+    };
+    return layer;
+  }
+  const L = {
+    circleMarker: (coordinates, options) => makeLayer("circleMarker", { coordinates, options }),
+    divIcon: (options) => ({ ...options, isDivIcon: true }),
+    geoJSON: (geometry, options) => makeLayer("geoJSON", { geometry, options }),
+    map: (id) => {
+      state.mapCount += 1;
+      const map = {
+        id,
+        layers: [],
+        fitBounds() { return this; },
+        invalidateSize() {
+          state.invalidateCalls += 1;
+          return this;
+        },
+        panTo(coordinates) {
+          state.panCalls.push(coordinates);
+          return this;
+        },
+        removeLayer(layer) {
+          this.layers = this.layers.filter((item) => item !== layer);
+          return this;
+        },
+        setView(coordinates, zoom) {
+          state.setViewCalls.push({ coordinates, zoom });
+          return this;
+        }
+      };
+      state.maps.push(map);
+      return map;
+    },
+    marker: (coordinates, options) => makeLayer("marker", { coordinates, options }),
+    rectangle: (bounds, options) => makeLayer("rectangle", { bounds, options }),
+    tileLayer: (url, options) => makeLayer("tileLayer", { options, url })
+  };
+  return { L, state };
+}
+
+async function createApp({
+  geolocation = null,
+  height = 900,
+  leaflet = false,
+  online = true,
+  radarFrames = [],
+  width = 1440,
+  youtube = false
+} = {}) {
   const jsdomErrors = [];
   const virtualConsole = new VirtualConsole();
   virtualConsole.on("jsdomError", (error) => jsdomErrors.push(error));
@@ -26,6 +128,17 @@ async function createApp({ height = 900, online = true, width = 1440, youtube = 
   const consoleErrors = [];
   const consoleWarnings = [];
   const openedUrls = [];
+  const alerts = [];
+  const printCalls = [];
+  const geolocationTracker = { calls: 0 };
+  const fetchControl = {
+    geocode: new Map(),
+    geocodeFailure: new Set(),
+    radarFailure: false,
+    radarFrames: [...radarFrames],
+    routeFailure: false
+  };
+  const leafletStub = leaflet ? createLeafletStub() : null;
   let scrollX = 0;
   let scrollY = 0;
   Object.defineProperties(window, {
@@ -37,13 +150,13 @@ async function createApp({ height = 900, online = true, width = 1440, youtube = 
   Object.defineProperty(window.navigator, "onLine", { configurable: true, value: online });
   window.console.error = (...values) => consoleErrors.push(values.map(String).join(" "));
   window.console.warn = (...values) => consoleWarnings.push(values.map(String).join(" "));
-  window.alert = () => {};
+  window.alert = (message) => alerts.push(String(message));
   window.confirm = () => true;
   window.open = (url) => {
     openedUrls.push(String(url));
     return null;
   };
-  window.print = () => {};
+  window.print = () => printCalls.push(new Date().toISOString());
   window.scrollTo = (x, y) => {
     if (typeof x === "object") {
       scrollX = Number(x.left || 0);
@@ -58,6 +171,32 @@ async function createApp({ height = 900, online = true, width = 1440, youtube = 
   window.IDBKeyRange = IDBKeyRange;
   window.navigator.clipboard = { writeText: async () => {} };
   window.document.execCommand = () => true;
+  if (leafletStub) window.L = leafletStub.L;
+  if (geolocation) {
+    Object.defineProperty(window.navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition(success, failure) {
+          geolocationTracker.calls += 1;
+          if (geolocation.type === "success") {
+            window.setTimeout(() => success({
+              coords: {
+                accuracy: geolocation.accuracy ?? 25,
+                latitude: geolocation.lat ?? 27.2,
+                longitude: geolocation.lon ?? -80.25
+              },
+              timestamp: geolocation.timestamp ?? Date.now()
+            }), 0);
+            return;
+          }
+          window.setTimeout(() => failure({
+            code: geolocation.code ?? 1,
+            message: geolocation.message || "Location unavailable"
+          }), 0);
+        }
+      }
+    });
+  }
   window.fetch = async (input) => {
     const url = String(input);
     let body = {};
@@ -82,7 +221,28 @@ async function createApp({ height = 900, online = true, width = 1440, youtube = 
     } else if (url.includes("/alerts/active")) {
       body = { features: [] };
     } else if (url.includes("rainviewer")) {
-      body = { host: "https://test.local", radar: { past: [], nowcast: [] } };
+      if (fetchControl.radarFailure) return { ok: false, status: 503, json: async () => ({}) };
+      body = { host: "https://test-radar.local", radar: { past: fetchControl.radarFrames, nowcast: [] } };
+    } else if (url.includes("nominatim.openstreetmap.org")) {
+      const address = decodeURIComponent(new URL(url).searchParams.get("q") || "");
+      if (fetchControl.geocodeFailure.has(address)) {
+        body = [];
+      } else {
+        const point = fetchControl.geocode.get(address) || { lat: 27.21, lon: -80.31 };
+        body = [{ lat: String(point.lat), lon: String(point.lon), display_name: address }];
+      }
+    } else if (url.includes("router.project-osrm.org")) {
+      if (fetchControl.routeFailure) return { ok: false, status: 503, json: async () => ({}) };
+      const coordinateSource = url.split("/driving/")[1].split("?")[0];
+      const coordinates = coordinateSource.split(";").map((item) => item.split(",").map(Number));
+      body = {
+        code: "Ok",
+        routes: [{
+          distance: Math.max(1, coordinates.length - 1) * 8046.72,
+          duration: Math.max(1, coordinates.length - 1) * 600,
+          geometry: { type: "LineString", coordinates }
+        }]
+      };
     }
     return { ok: true, status: 200, json: async () => body };
   };
@@ -120,13 +280,18 @@ async function createApp({ height = 900, online = true, width = 1440, youtube = 
   window.eval(script);
   await wait();
   return {
+    alerts,
     close: () => window.close(),
     consoleErrors,
     consoleWarnings,
     document: window.document,
     evaluate: (source) => window.eval(source),
+    fetchControl,
+    geolocationTracker,
     jsdomErrors,
+    leafletState: leafletStub?.state || null,
     openedUrls,
+    printCalls,
     window
   };
 }
@@ -155,8 +320,10 @@ function clickPreferredCard(app, selectId, value) {
 test("v3.19 identifiers, cache keys, and Billing Center dialog structure agree", () => {
   assert.match(html, /<title>Paradise Lawn Care Operations Suite v3\.19<\/title>/);
   assert.match(html, /Operations Suite v3\.19 — Preferred Contact &amp; Smoke Signal/);
-  assert.match(html, /style\.css\?v=3\.19\.1/);
-  assert.match(html, /script\.js\?v=3\.19\.1/);
+  assert.match(html, /style\.css\?v=3\.19\.2/);
+  assert.match(html, /script\.js\?v=3\.19\.2/);
+  assert.match(html, /vendor\/leaflet\/leaflet\.css\?v=1\.9\.4/);
+  assert.match(html, /vendor\/leaflet\/leaflet\.js\?v=1\.9\.4/);
   assert.match(script, /Version 3\.19/);
   assert.match(script, /const APP_VERSION = "3\.19"/);
   assert.match(script, /DASHBOARD_VERSION_V39="3\.19"/);
@@ -425,6 +592,105 @@ test("Preferred Contact cards are reusable, touch-oriented, and keyboard accessi
   assert.match(style, /\.preferred-contact-card\s*\{[\s\S]*min-height:\s*82px/);
 });
 
+test("explicit Invoice Text and Email buttons launch one encoded handoff per actual click", async (t) => {
+  const app = await createApp();
+  t.after(app.close);
+  app.evaluate("window.__handoffs=[];window.__paradiseDeviceLinkHandler=function(url){window.__handoffs.push(url);};");
+  app.document.querySelector("#clientName").value = "Text & Email Customer";
+  app.document.querySelector("#phone").value = "(772) 555-0140";
+  app.document.querySelector("#email").value = "customer+invoice@example.com";
+  app.document.querySelector("#notes").value = "Line one\nLine two & more";
+
+  app.document.querySelector("#invoiceTextAction").click();
+  app.document.querySelector("#invoiceEmailAction").click();
+
+  const handoffs = app.evaluate("window.__handoffs");
+  assert.equal(handoffs.length, 2);
+  assert.match(handoffs[0], /^sms:7725550140\?body=/);
+  assert.match(decodeURIComponent(handoffs[0]), /Text & Email Customer/);
+  assert.match(handoffs[1], /^mailto:customer%2Binvoice@example\.com\?subject=/);
+  assert.match(decodeURIComponent(handoffs[1]), /Paradise Lawn Care Invoice/);
+  assert.equal(app.document.querySelectorAll('[id^="invoiceTextAction"]').length, 1);
+  assert.equal(app.document.querySelectorAll('[id^="invoiceEmailAction"]').length, 1);
+
+  app.evaluate("window.__handoffs=[]");
+  clickPreferredCard(app, "invoicePreferredContact", "Text");
+  clickPreferredCard(app, "invoicePreferredContact", "Email");
+  assert.equal(app.evaluate("window.__handoffs.length"), 0);
+
+  app.document.querySelector("#phone").value = "";
+  app.document.querySelector("#email").value = "invalid";
+  app.document.querySelector("#invoiceTextAction").click();
+  app.document.querySelector("#invoiceEmailAction").click();
+  assert.equal(app.evaluate("window.__handoffs.length"), 0);
+  assert.match(app.alerts.join(" "), /phone number/);
+  assert.match(app.alerts.join(" "), /email address/);
+});
+
+test("Quote, Customer, Scheduling, and Communication individual actions use one-click handoffs", async (t) => {
+  const app = await createApp();
+  t.after(app.close);
+  app.evaluate("window.__handoffs=[];window.__paradiseDeviceLinkHandler=function(url){window.__handoffs.push(url);};");
+
+  app.document.querySelector("#quotePhone").value = "772-555-0160";
+  app.document.querySelector("#quoteEmail").value = "quote@example.com";
+  app.document.querySelector("#quoteScope").value = "Full Service & cleanup";
+  app.document.querySelector("#quoteAmount").value = "150.00";
+  app.document.querySelector("#quoteTextAction").click();
+  app.document.querySelector("#quoteEmailAction").click();
+
+  app.document.querySelector("#customerName").value = "Direct Customer";
+  app.document.querySelector("#customerPhone").value = "772-555-0170";
+  app.document.querySelector("#customerEmail").value = "direct@example.com";
+  app.document.querySelector("#customerTextAction").click();
+  app.document.querySelector("#customerEmailAction").click();
+
+  app.evaluate(`
+    writeArray("paradise_customers_v2", [{
+      id:"individual-communication",
+      name:"Communication Customer",
+      phone:"772-555-0180",
+      email:"communication@example.com",
+      preferredContact:"Email"
+    }]);
+    renderCommunicationRecipients();
+  `);
+  app.document.querySelector('[data-communication-action="Text"][data-customer-id="individual-communication"]').click();
+  app.document.querySelector('[data-communication-action="Email"][data-customer-id="individual-communication"]').click();
+
+  const handoffs = app.evaluate("window.__handoffs");
+  assert.equal(handoffs.length, 6);
+  assert.equal(handoffs.filter((url) => url.startsWith("sms:")).length, 3);
+  assert.equal(handoffs.filter((url) => url.startsWith("mailto:")).length, 3);
+  assert.match(decodeURIComponent(handoffs[0]), /Full Service & cleanup/);
+  assert.match(decodeURIComponent(handoffs[1]), /Paradise Lawn Care Quote/);
+});
+
+test("invoice view, preview, and print DOM use the approved local logo and grass artwork", async (t) => {
+  const app = await createApp();
+  t.after(app.close);
+  assert.equal(app.document.querySelector(".header .logo").getAttribute("src"), "images/paradise-logo.svg");
+  assert.equal(app.document.querySelector(".header .grass img").getAttribute("src"), "images/grass.svg");
+  assert.doesNotMatch(html, /tomt-goldcoast\.github\.io\/paradise-invoice/);
+
+  app.document.querySelector("#clientName").value = "Artwork Customer";
+  app.document.querySelector("#email").value = "artwork@example.com";
+  app.document.querySelector("#viewInvoicePdfButton").click();
+  const preview = app.document.querySelector("#pdfPreview");
+  assert.equal(preview.querySelector(".pdf-logo").getAttribute("src"), "images/paradise-logo.svg");
+  assert.equal(preview.querySelector(".pdf-grass-art").getAttribute("src"), "images/grass.svg");
+  assert.match(preview.querySelector(".pdf-logo").getAttribute("alt"), /Paradise Lawn Care/);
+  assert.match(preview.querySelector(".pdf-grass-art").getAttribute("alt"), /grass corner artwork/);
+  assert.match(style, /@media print[\s\S]*#pdfPreview img[\s\S]*visibility:\s*visible/);
+  assert.match(style, /body\s*>\s*:not\(#pdfModal\)\s*\{[\s\S]*display:\s*none\s*!important/);
+  assert.match(style, /body\s*>\s*#pdfModal\s*\{[\s\S]*position:\s*static\s*!important/);
+
+  app.evaluate("waitForInvoiceArtworkV319=function(){return Promise.resolve();}");
+  app.document.querySelector("#printInvoicePreviewButton").click();
+  await wait(20);
+  assert.equal(app.printCalls.length, 1);
+});
+
 test("Customer Smoke Signal card launches the reusable controller", async (t) => {
   const app = await createApp({ youtube: true });
   t.after(app.close);
@@ -689,6 +955,101 @@ test("legacy preferred-contact fields migrate without losing customer, quote, or
   assert.equal(invoice.legacyMarker, "invoice-data");
 });
 
+test("protected legacy records retain identifiers, attachments, schedule metadata, and unrelated module data", async (t) => {
+  const app = await createApp();
+  t.after(app.close);
+  const result = app.evaluate(`(()=>{
+    const customer = {
+      id:"protected-customer",
+      customerNumber:"C-PROTECTED",
+      name:"Protected Customer",
+      properties:[{id:"property-1",address:"1 Protected Lane",gateCode:"7890",customPropertyField:"keep"}],
+      attachmentIds:["customer-file-1"],
+      customCustomerField:"keep"
+    };
+    const quote = {
+      id:"protected-quote",
+      number:"Q-PROTECTED",
+      jobId:"J-PROTECTED",
+      customerId:customer.id,
+      property:customer.properties[0],
+      attachmentIds:["quote-file-1"],
+      customQuoteField:"keep"
+    };
+    const invoice = {
+      id:"protected-invoice",
+      invoiceNumber:"INV-PROTECTED",
+      jobNumber:"INV-PROTECTED",
+      jobId:"J-PROTECTED",
+      customerId:customer.id,
+      quoteId:quote.id,
+      attachmentIds:["invoice-file-1"],
+      customInvoiceField:"keep",
+      services:[{address:"1 Protected Lane",service:"Full Service",amount:90}]
+    };
+    writeArray("paradise_customers_v2",[customer]);
+    writeArray("paradise_quotes_v2",[quote]);
+    storeInvoices([invoice]);
+    writeArray("paradise_employees_v2",[{id:"employee-keep",name:"Employee Keep",customField:"keep"}]);
+    writeArray("paradise_payroll_v2",[{id:"payroll-keep",employeeId:"employee-keep",amount:120,customField:"keep"}]);
+    writeArray("paradise_operating_expenses_v2",[{id:"expense-keep",total:45,customField:"keep"}]);
+    writeArray("paradise_inventory_v2",[{id:"stock-keep",name:"String",quantity:3,customField:"keep"}]);
+    localStorage.setItem("paradise_maintenance_records_v1",JSON.stringify({mower:{notes:"keep"}}));
+    const scheduleKey=getLocalDateString()+"_0830";
+    localStorage.setItem("paradise_employee_schedule_v1",JSON.stringify({
+      [scheduleKey]:{
+        recordType:"Invoice",
+        recordId:invoice.id,
+        jobId:invoice.jobId,
+        jobNumber:invoice.jobNumber,
+        customerId:customer.id,
+        customerNumber:customer.customerNumber,
+        routeLocked:true,
+        manualOrder:2,
+        appointmentWindow:"8:00–9:00",
+        attachmentIds:["schedule-file-1"],
+        customScheduleField:"keep",
+        workStatus:"Upcoming"
+      }
+    }));
+    migratePreferredContactsV319();
+    renderSchedule();
+    saveSchedule();
+    return {
+      customer:readArray("paradise_customers_v2")[0],
+      quote:readArray("paradise_quotes_v2")[0],
+      invoice:getSavedInvoices()[0],
+      schedule:getScheduleData()[scheduleKey],
+      employee:readArray("paradise_employees_v2")[0],
+      payroll:readArray("paradise_payroll_v2")[0],
+      expense:readArray("paradise_operating_expenses_v2")[0],
+      inventory:readArray("paradise_inventory_v2")[0],
+      maintenance:JSON.parse(localStorage.getItem("paradise_maintenance_records_v1"))
+    };
+  })()`);
+
+  assert.equal(result.customer.id, "protected-customer");
+  assert.equal(result.customer.customerNumber, "C-PROTECTED");
+  assert.equal(result.customer.properties[0].customPropertyField, "keep");
+  assert.equal(result.customer.attachmentIds[0], "customer-file-1");
+  assert.equal(result.quote.id, "protected-quote");
+  assert.equal(result.quote.jobId, "J-PROTECTED");
+  assert.equal(result.quote.attachmentIds[0], "quote-file-1");
+  assert.equal(result.invoice.id, "protected-invoice");
+  assert.equal(result.invoice.quoteId, "protected-quote");
+  assert.equal(result.invoice.attachmentIds[0], "invoice-file-1");
+  assert.equal(result.schedule.routeLocked, true);
+  assert.equal(result.schedule.manualOrder, 2);
+  assert.equal(result.schedule.appointmentWindow, "8:00–9:00");
+  assert.equal(result.schedule.attachmentIds[0], "schedule-file-1");
+  assert.equal(result.schedule.customScheduleField, "keep");
+  assert.equal(result.employee.customField, "keep");
+  assert.equal(result.payroll.customField, "keep");
+  assert.equal(result.expense.customField, "keep");
+  assert.equal(result.inventory.customField, "keep");
+  assert.equal(result.maintenance.mower.notes, "keep");
+});
+
 test("Communication Center supports every audience, totals every method, and never mass-launches Smoke Signal", async (t) => {
   const app = await createApp();
   t.after(app.close);
@@ -820,6 +1181,355 @@ test("Smoke Signal handles offline/API failure, autoplay denial, Escape, and dup
     "The smoke signal could not be delivered.Try Text or Phone instead."
   );
   autoplayApp.document.querySelector("#smokeSignalOverlay .smoke-signal-close").click();
+});
+
+test("Radar initializes after its tab is visible, resizes, retries, and never duplicates its map", async (t) => {
+  const app = await createApp({
+    leaflet: true,
+    radarFrames: [
+      { path: "/v2/radar/100", time: 100 },
+      { path: "/v2/radar/200", time: 200 }
+    ]
+  });
+  t.after(app.close);
+  const weatherButton = app.document.querySelector('[data-tab="weatherTab"]');
+  weatherButton.click();
+  await wait(180);
+
+  assert.equal(app.leafletState.mapCount, 1);
+  assert.ok(app.leafletState.invalidateCalls > 0);
+  assert.equal(app.evaluate("getRadarStateV319().frameCount"), 2);
+  assert.match(app.document.querySelector("#radarStatus").textContent, /Radar loaded|Radar ready/);
+  weatherButton.click();
+  await wait(120);
+  assert.equal(app.leafletState.mapCount, 1);
+
+  const radarTile = app.leafletState.layers.find((layer) => layer.type === "tileLayer" && layer.url.includes("test-radar"));
+  assert.ok(radarTile);
+  radarTile.fire("tileerror");
+  assert.match(app.document.querySelector("#radarStatus").textContent, /blocked or unavailable/);
+  assert.equal(app.document.querySelector("#radarStatus").classList.contains("is-error"), true);
+});
+
+test("Radar failure leaves Weather usable and the visible Refresh Radar action recovers", async (t) => {
+  const app = await createApp({ leaflet: true });
+  t.after(app.close);
+  app.fetchControl.radarFailure = true;
+  app.document.querySelector('[data-tab="weatherTab"]').click();
+  await wait(150);
+  assert.match(app.document.querySelector("#radarStatus").textContent, /could not be reached/);
+  assert.equal(app.document.querySelector("#radarRefreshButton").hidden, false);
+  assert.match(app.document.querySelector("#weatherStatus").textContent, /Live weather loaded/);
+
+  app.fetchControl.radarFailure = false;
+  app.fetchControl.radarFrames = [{ path: "/v2/radar/retry", time: 300 }];
+  app.document.querySelector("#radarRefreshButton").click();
+  await wait(100);
+  assert.equal(app.evaluate("getRadarStateV319().frameCount"), 1);
+  assert.match(app.document.querySelector("#radarStatus").textContent, /Radar loaded/);
+  assert.deepEqual(app.consoleErrors.filter((message) => !message.includes("Radar provider failure")), []);
+});
+
+test("missing map-library startup fails visibly without breaking live Weather", async (t) => {
+  const app = await createApp();
+  t.after(app.close);
+  app.document.querySelector('[data-tab="weatherTab"]').click();
+  await wait(120);
+  assert.match(app.document.querySelector("#radarStatus").textContent, /map library did not load/i);
+  assert.match(app.document.querySelector("#weatherStatus").textContent, /Live weather loaded/);
+  assert.equal(app.document.querySelector("#radarRefreshButton").hidden, false);
+  assert.equal(app.document.querySelector("#invoiceTab").classList.contains("tab-panel"), true);
+  assert.equal(app.consoleErrors.length, 0);
+});
+
+test("one click on a populated Scheduling job shows the linked customer, property, actions, and map pin", async (t) => {
+  const app = await createApp({ leaflet: true });
+  t.after(app.close);
+  app.evaluate(`
+    installDemoInvoices();
+    const customers = readArray("paradise_customers_v2");
+    const customer = customers.find(item => item.id === "demo-customer-1");
+    customer.properties[0].lat = 27.22;
+    customer.properties[0].lon = -80.24;
+    writeArray("paradise_customers_v2", customers);
+    renderSchedule();
+    window.__handoffs=[];
+    window.__paradiseDeviceLinkHandler=function(url){window.__handoffs.push(url);};
+  `);
+  const jobButton = [...app.document.querySelectorAll(".job-number-button")]
+    .find((button) => button.textContent.includes("J-DEMO-2026-001"));
+  assert.ok(jobButton);
+  jobButton.click();
+
+  assert.equal(app.document.querySelector("#scheduleCustomerCard").hidden, false);
+  assert.match(app.document.querySelector("#scheduleSelectedCustomer").textContent, /Maria Santos/);
+  assert.match(app.document.querySelector("#scheduleSelectedAddress").textContent, /Ocean Blvd/);
+  assert.match(app.document.querySelector("#scheduleSelectedDetails").textContent, /maria\.santos@example\.com/);
+  assert.match(app.document.querySelector("#scheduleSelectedDetails").textContent, /Dog in fenced rear yard/);
+  assert.match(app.document.querySelector("#scheduleSelectedDetails").textContent, /Full Service/);
+
+  app.document.querySelector("#scheduleTextCustomerButton").click();
+  app.document.querySelector("#scheduleEmailCustomerButton").click();
+  assert.equal(app.evaluate("window.__handoffs.length"), 2);
+  assert.match(app.evaluate("decodeURIComponent(window.__handoffs[0])"), /Maria Santos/);
+
+  app.document.querySelector("#scheduleShowMapButton").click();
+  await wait(30);
+  assert.ok(app.leafletState.layers.some((layer) => layer.type === "marker" && layer.popup?.includes("Maria Santos")));
+  app.document.querySelector("#scheduleOpenMapsButton").click();
+  assert.match(app.openedUrls.at(-1), /google\.com\/maps\/search/);
+
+  const scheduleType = jobButton.closest(".schedule-slot").querySelector(".sched-type");
+  scheduleType.value = scheduleType.value === "BP" ? "RS" : "BP";
+  scheduleType.dispatchEvent(new app.window.Event("change", { bubbles: true }));
+  assert.ok(["BP", "RS"].includes(scheduleType.value));
+});
+
+test("Scheduling still shows the correct customer when its property address is missing and map actions fail safely", async (t) => {
+  const app = await createApp({ leaflet: true });
+  t.after(app.close);
+  app.evaluate(`
+    writeArray("paradise_customers_v2", [{
+      id:"missing-address-customer",
+      customerNumber:"C-NO-ADDRESS",
+      name:"Customer Without Address",
+      phone:"7725550199",
+      properties:[{name:"Address Pending",gateCode:"CALL"}]
+    }]);
+    storeInvoices([{
+      id:"missing-address-invoice",
+      jobNumber:"J-NO-ADDRESS",
+      jobId:"J-NO-ADDRESS",
+      customerId:"missing-address-customer",
+      customerNumber:"C-NO-ADDRESS",
+      clientName:"Customer Without Address",
+      services:[{service:"Full Service",amount:50}],
+      total:50
+    }]);
+    localStorage.setItem("paradise_employee_schedule_v1",JSON.stringify({
+      [getLocalDateString()+"_1030"]:{
+        recordType:"Invoice",
+        recordId:"missing-address-invoice",
+        jobId:"J-NO-ADDRESS",
+        jobNumber:"J-NO-ADDRESS",
+        customerId:"missing-address-customer",
+        customerNumber:"C-NO-ADDRESS",
+        workStatus:"Upcoming"
+      }
+    }));
+    renderSchedule();
+  `);
+  app.document.querySelector('[data-schedule-details$="_1030"]').click();
+  assert.match(app.document.querySelector("#scheduleSelectedCustomer").textContent, /Customer Without Address/);
+  assert.match(app.document.querySelector("#scheduleSelectedAddress").textContent, /Address incomplete/);
+  app.document.querySelector("#scheduleShowMapButton").click();
+  app.document.querySelector("#scheduleOpenMapsButton").click();
+  assert.match(app.alerts.join(" "), /complete service address/i);
+  assert.equal(app.openedUrls.length, 0);
+});
+
+test("current-location routing requests permission only on click and synchronizes numbered pins with the route list", async (t) => {
+  const app = await createApp({
+    geolocation: { type: "success", lat: 27.19, lon: -80.28, accuracy: 18 },
+    leaflet: true
+  });
+  t.after(app.close);
+  app.evaluate(`
+    writeArray("paradise_customers_v2", [
+      {id:"route-customer-1",customerNumber:"C-ROUTE-1",name:"First Route Customer",phone:"7725550101",email:"first@example.com",properties:[{name:"First Property",address:"10 First Street, Stuart, FL",lat:27.21,lon:-80.29,gateCode:"1234"}]},
+      {id:"route-customer-2",customerNumber:"C-ROUTE-2",name:"Second Route Customer",phone:"7725550102",email:"second@example.com",properties:[{name:"Second Property",address:"20 Second Street, Stuart, FL",lat:27.24,lon:-80.22}]}
+    ]);
+    storeInvoices([
+      {id:"route-invoice-1",invoiceNumber:"INV-ROUTE-1",jobNumber:"INV-ROUTE-1",jobId:"J-ROUTE-1",customerId:"route-customer-1",customerNumber:"C-ROUTE-1",clientName:"First Route Customer",phone:"7725550101",email:"first@example.com",services:[{address:"10 First Street, Stuart, FL",service:"Full Service",amount:80}],total:80},
+      {id:"route-invoice-2",invoiceNumber:"INV-ROUTE-2",jobNumber:"INV-ROUTE-2",jobId:"J-ROUTE-2",customerId:"route-customer-2",customerNumber:"C-ROUTE-2",clientName:"Second Route Customer",phone:"7725550102",email:"second@example.com",services:[{address:"20 Second Street, Stuart, FL",service:"Hedge Trim",amount:120}],total:120}
+    ]);
+    const today=getLocalDateString();
+    localStorage.setItem("paradise_employee_schedule_v1",JSON.stringify({
+      [today+"_0800"]:{recordType:"Invoice",recordId:"route-invoice-1",jobId:"J-ROUTE-1",jobNumber:"J-ROUTE-1",customerId:"route-customer-1",customerNumber:"C-ROUTE-1",workStatus:"Upcoming"},
+      [today+"_0900"]:{recordType:"Invoice",recordId:"route-invoice-2",jobId:"J-ROUTE-2",jobNumber:"J-ROUTE-2",customerId:"route-customer-2",customerNumber:"C-ROUTE-2",workStatus:"Upcoming",routeLocked:true}
+    }));
+    renderSchedule();
+  `);
+  assert.equal(app.geolocationTracker.calls, 0);
+
+  app.document.querySelector("#buildTodayRouteButton").click();
+  await wait(180);
+
+  assert.equal(app.geolocationTracker.calls, 1);
+  assert.equal(app.evaluate("getRouteStateV319().start.source"), "current");
+  assert.equal(app.document.querySelector("#routeJobCount").textContent, "2");
+  assert.equal(app.document.querySelectorAll("#routeStopList .route-stop").length, 2);
+  assert.equal(app.evaluate("getRouteStateV319().stopMarkerCount"), 2);
+  assert.ok(app.leafletState.layers.some((layer) => layer.type === "marker" && layer.popup?.includes("Current Location")));
+  assert.match(app.document.querySelector("#routeStartStatus").textContent, /Current location detected/);
+  assert.equal(app.window.localStorage.getItem("paradise_route_start_v319"), null);
+
+  const secondStop = app.document.querySelectorAll("#routeStopList .route-stop")[1];
+  secondStop.click();
+  assert.equal(secondStop.classList.contains("is-selected"), true);
+  assert.equal(app.document.querySelector("#scheduleCustomerCard").hidden, false);
+  assert.match(app.document.querySelector("#scheduleSelectedCustomer").textContent, /Second Route Customer/);
+  app.leafletState.layers.find((layer) => layer.type === "marker" && layer.popup?.includes("First Route Customer")).fire("click");
+  assert.match(app.document.querySelector("#scheduleSelectedCustomer").textContent, /First Route Customer/);
+
+  const preserved = app.evaluate(`
+    renderSchedule();
+    saveSchedule();
+    getScheduleData()[getLocalDateString()+"_0900"].routeLocked
+  `);
+  assert.equal(preserved, true);
+});
+
+test("routing falls back after location denial, supports a saved/manual start, and degrades without OSRM", async (t) => {
+  const app = await createApp({ geolocation: { type: "error", code: 1 }, leaflet: true });
+  t.after(app.close);
+  app.evaluate(`
+    writeArray("paradise_customers_v2", [{id:"fallback-customer",name:"Fallback Customer",properties:[{address:"30 Fallback Road, Stuart, FL",lat:27.25,lon:-80.2}]}]);
+    storeInvoices([{id:"fallback-invoice",jobNumber:"INV-FALLBACK",jobId:"J-FALLBACK",customerId:"fallback-customer",clientName:"Fallback Customer",services:[{address:"30 Fallback Road, Stuart, FL",service:"Full Service",amount:75}],total:75}]);
+    localStorage.setItem("paradise_employee_schedule_v1",JSON.stringify({
+      [getLocalDateString()+"_1000"]:{recordType:"Invoice",recordId:"fallback-invoice",jobId:"J-FALLBACK",jobNumber:"J-FALLBACK",customerId:"fallback-customer",workStatus:"Upcoming"}
+    }));
+    localStorage.setItem("paradise_route_start_v319",JSON.stringify({address:"Saved Start, Stuart, FL",lat:27.18,lon:-80.27,savedAt:new Date().toISOString()}));
+    renderSchedule();
+  `);
+  app.fetchControl.routeFailure = true;
+  app.document.querySelector("#buildTodayRouteButton").click();
+  await wait(160);
+  assert.equal(app.evaluate("getRouteStateV319().start.source"), "saved");
+  assert.match(app.document.querySelector("#routeStartStatus").textContent, /permission was denied.*saved preferred/i);
+  assert.match(app.document.querySelector("#routeMiles").textContent, /\*/);
+  assert.match(app.document.querySelector("#routeStatus").textContent, /straight-line estimates/);
+
+  app.document.querySelector("#routeStartMode").value = "manual";
+  app.document.querySelector("#routeStartAddress").value = "44 Manual Start, Stuart, FL";
+  app.document.querySelector("#routeSaveStart").checked = true;
+  app.fetchControl.routeFailure = false;
+  app.document.querySelector("#routeRefreshLocationButton").click();
+  await wait(120);
+  assert.equal(app.evaluate("getRouteStateV319().start.source"), "manual");
+  assert.equal(app.geolocationTracker.calls, 1);
+  assert.equal(JSON.parse(app.window.localStorage.getItem("paradise_route_start_v319")).address, "44 Manual Start, Stuart, FL");
+
+  const order = app.evaluate(`
+    phaseCNearestOrder([
+      {id:"flex-a",key:"2026-01-01_0800",lat:27.5,lon:-80.5,item:{}},
+      {id:"locked",key:"2026-01-01_0900",lat:27.4,lon:-80.4,item:{routeLocked:true}},
+      {id:"appointment",key:"2026-01-01_0930",lat:27.45,lon:-80.45,item:{appointmentWindow:"9:30–10:00"}},
+      {id:"manual-first",key:"2026-01-01_1000",lat:27.3,lon:-80.3,item:{manualOrder:1}}
+    ],{lat:27.2,lon:-80.2}).map(item=>item.id)
+  `);
+  assert.equal(order[0], "manual-first");
+  assert.equal(order[1], "locked");
+  assert.equal(order[2], "appointment");
+});
+
+test("position unavailable, timeout, invalid, and stale current locations each fall back to the business for a one-job route", async () => {
+  const cases = [
+    {
+      geolocation: { type: "error", code: 2 },
+      expected: /Current location is unavailable.*business location/i
+    },
+    {
+      geolocation: { type: "error", code: 3 },
+      expected: /request timed out.*business location/i
+    },
+    {
+      geolocation: { type: "success", lat: 999, lon: -80 },
+      expected: /invalid coordinates.*business location/i
+    },
+    {
+      geolocation: { type: "success", lat: 27.2, lon: -80.25, timestamp: Date.now() - (10 * 60 * 1000) },
+      expected: /old location.*business location/i
+    }
+  ];
+
+  for (const [index, scenario] of cases.entries()) {
+    const app = await createApp({ geolocation: scenario.geolocation, leaflet: true });
+    try {
+      app.evaluate(`
+        writeArray("paradise_customers_v2", [{
+          id:"business-fallback-${index}",
+          name:"Business Fallback ${index}",
+          properties:[{address:"${index + 1} Fallback Way, Stuart, FL",lat:27.2,lon:-80.2}]
+        }]);
+        storeInvoices([{
+          id:"business-fallback-invoice-${index}",
+          jobNumber:"J-BUSINESS-${index}",
+          jobId:"J-BUSINESS-${index}",
+          customerId:"business-fallback-${index}",
+          clientName:"Business Fallback ${index}",
+          services:[{address:"${index + 1} Fallback Way, Stuart, FL",service:"Full Service",amount:60}],
+          total:60
+        }]);
+        localStorage.setItem("paradise_employee_schedule_v1",JSON.stringify({
+          [getLocalDateString()+"_1100"]:{
+            recordType:"Invoice",
+            recordId:"business-fallback-invoice-${index}",
+            jobId:"J-BUSINESS-${index}",
+            jobNumber:"J-BUSINESS-${index}",
+            customerId:"business-fallback-${index}",
+            workStatus:"Upcoming"
+          }
+        }));
+        renderSchedule();
+      `);
+      app.document.querySelector("#buildTodayRouteButton").click();
+      await wait(130);
+      assert.equal(app.geolocationTracker.calls, 1);
+      assert.equal(app.evaluate("getRouteStateV319().start.source"), "business");
+      assert.equal(app.evaluate("getRouteStateV319().stopCount"), 1);
+      assert.equal(app.document.querySelector("#routeJobCount").textContent, "1");
+      assert.match(app.document.querySelector("#routeStartStatus").textContent, scenario.expected);
+      assert.equal(app.window.localStorage.getItem("paradise_route_start_v319"), null);
+    } finally {
+      app.close();
+    }
+  }
+});
+
+test("completed and canceled jobs are excluded while duplicate addresses and a partial geocode failure route safely", async (t) => {
+  const app = await createApp({ geolocation: { type: "success", lat: 27.19, lon: -80.28 }, leaflet: true });
+  t.after(app.close);
+  app.evaluate(`
+    writeArray("paradise_customers_v2", [{
+      id:"filter-customer",
+      name:"Filter Customer",
+      properties:[{address:"50 Filter Road, Stuart, FL",lat:27.23,lon:-80.24}]
+    }]);
+    storeInvoices([
+      {id:"filter-active",jobNumber:"J-ACTIVE",jobId:"J-ACTIVE",customerId:"filter-customer",clientName:"Filter Customer",services:[{address:"50 Filter Road, Stuart, FL",service:"Full Service",amount:75}],total:75},
+      {id:"filter-duplicate",jobNumber:"J-DUPLICATE",jobId:"J-DUPLICATE",customerId:"filter-customer",clientName:"Filter Customer",services:[{address:"50 Filter Road, Stuart, FL",service:"Hedge Trim",amount:55}],total:55},
+      {id:"filter-missing",jobNumber:"J-MISSING",jobId:"J-MISSING",clientName:"Missing Address",services:[{address:"Unlocatable Test Address, Stuart, FL",service:"Full Service",amount:40}],total:40}
+    ]);
+    const today=getLocalDateString();
+    localStorage.setItem("paradise_employee_schedule_v1",JSON.stringify({
+      [today+"_0800"]:{recordType:"Invoice",recordId:"filter-active",jobId:"J-ACTIVE",jobNumber:"J-ACTIVE",customerId:"filter-customer",workStatus:"Upcoming"},
+      [today+"_0830"]:{recordType:"Invoice",recordId:"filter-active",jobId:"J-COMPLETE",jobNumber:"J-COMPLETE",customerId:"filter-customer",workStatus:"Completed"},
+      [today+"_0900"]:{recordType:"Invoice",recordId:"filter-active",jobId:"J-CANCEL",jobNumber:"J-CANCEL",customerId:"filter-customer",workStatus:"Cancelled"},
+      [today+"_0930"]:{recordType:"Invoice",recordId:"filter-missing",jobId:"J-MISSING",jobNumber:"J-MISSING",workStatus:"Upcoming"},
+      [today+"_1000"]:{recordType:"Invoice",recordId:"filter-duplicate",jobId:"J-DUPLICATE",jobNumber:"J-DUPLICATE",customerId:"filter-customer",workStatus:"Upcoming"}
+    }));
+    renderSchedule();
+  `);
+  app.fetchControl.geocodeFailure.add("Unlocatable Test Address, Stuart, FL");
+  app.document.querySelector("#buildTodayRouteButton").click();
+  await wait(150);
+  assert.equal(app.evaluate("getRouteStateV319().stopCount"), 2);
+  assert.equal(app.document.querySelector("#routeJobCount").textContent, "2");
+  assert.match(app.document.querySelector("#routeStatus").textContent, /1 job was omitted/);
+  assert.doesNotMatch(app.document.querySelector("#routeStopList").textContent, /COMPLETE|CANCEL/);
+});
+
+test("no-job routing avoids unnecessary location permission and leaves unrelated modules usable", async (t) => {
+  const app = await createApp({ geolocation: { type: "success", lat: 999, lon: -80 }, leaflet: true });
+  t.after(app.close);
+  app.document.querySelector("#buildTodayRouteButton").click();
+  await wait(30);
+  assert.equal(app.geolocationTracker.calls, 0);
+  assert.match(app.document.querySelector("#routeStatus").textContent, /No incomplete, active jobs/);
+  assert.equal(app.document.querySelector("#routeJobCount").textContent, "0");
+  assert.equal(app.document.querySelector("#invoiceTab").classList.contains("tab-panel"), true);
+  assert.equal(app.document.querySelector("#weatherTab").classList.contains("tab-panel"), true);
 });
 
 test("static validation finds no duplicate IDs or missing inline click handlers", async (t) => {
